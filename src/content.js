@@ -80,3 +80,32 @@ export const storyNames = [
   { id: 'gong', piece: 'piece-3', name: '栱', shape: '横向伸展', note: '沿着它的长边看，两端向外伸展，与斗共同组成层叠关系。' },
   { id: 'pupai', piece: 'piece-1', name: '普拍枋', shape: '底部横铺', note: '它铺在这组木构的下方。记住这条水平线，稍后到实景里再找一次。' },
 ];
+
+// One learner sample. Names, roles, and the photo note are reused from the entries above.
+// The slot label names the teaching notch already described on 斗; it is not a surveyed joint.
+const douPart = parts.find(part => part.id === 'dou');
+const douStory = storyNames.find(item => item.id === 'dou');
+const [supportBelow, supportAbove] = douPart.connection.split(' · ');
+export const teachingSample = {
+  piece: douStory.piece,
+  type: 'dou',
+  title: '底部大斗',
+  kicker: '教学样例',
+  blurb: '先看块状承托，再看上下相接的木件，最后到实景里找一次。',
+  labels: [
+    { id: 'body', name: douStory.name, role: douStory.shape, at: [0.5, 0.32, 0.5], side: 'left' },
+    { id: 'slot', name: '示意槽口', role: '与条状木件相接', caveat: '未据实测复原', at: [0.5, 0.82, 0.5], side: 'right' },
+  ],
+  neighbors: [
+    { id: storyNames.find(item => item.id === 'pupai').piece, relation: supportBelow },
+    { id: storyNames.find(item => item.id === 'gong').piece, relation: supportAbove },
+  ],
+  photo: 'dougong',
+  marker: {
+    x: 50,
+    y: 50,
+    name: douStory.name,
+    role: douStory.shape,
+    note: `${photos.dougong.note}此标记是教学观察点，不是实测定位。`,
+  },
+};

@@ -37,3 +37,19 @@ body[data-mode=photo] .piece-tools{display:none}
 @media(min-width:781px){body[data-mode=detail] .intro h2{font-size:25px;margin:12px 0}body[data-mode=detail] .intro h2 br{display:none}body[data-mode=detail] .intro>p:not(.eyebrow){display:none}body[data-mode=detail] .layer-list{max-height:280px;overflow-y:auto;flex-shrink:0;scrollbar-width:thin;scrollbar-color:#d8d7ce transparent}body[data-mode=detail] .info-card{margin-top:17px}body[data-mode=detail] .sidebar-bottom{padding-top:16px}}
 @media(max-width:780px){.piece-tools{bottom:207px}.granularity{margin-right:10px}.granularity button{padding:4px 7px}.control-head label{font-size:11px;letter-spacing:0}.catalog-header{gap:8px}.catalog-header h3{font-size:11px}}
 @media(max-width:480px){.piece-tools{max-width:calc(100% - 80px);gap:8px;padding-left:10px}.piece-tools button{font-size:10px}#extract-piece{padding:8px}.granularity{margin-right:8px}.granularity button{font-size:9px;padding:4px 5px}.control-head{gap:4px}.control-head label svg{display:none}.photo-switch button{padding:7px 9px;font-size:10px}}
+.sample-tag{margin-left:6px;font-style:normal;font-size:8px;letter-spacing:1px;color:#8d7954;border:1px solid #e0d3b8;border-radius:2px;padding:1px 4px}
+.sample-path{margin-top:12px;padding-top:11px;border-top:1px solid #dfdfd0}
+.sample-kicker{font-size:9px;letter-spacing:1px;color:#8c7958;margin:0 0 6px}
+.sample-path>p:not(.sample-kicker){font-size:11px;line-height:1.7;color:#7c8170}
+.sample-chips{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.sample-chip{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;font-size:11px;color:#70542f;background:#f7f6ef;border:1px solid #e4e1d4;border-radius:3px;padding:7px 8px}
+.sample-chip small{font-size:9px;color:#8a9378}
+.photo-frame{position:relative;display:inline-block;max-width:100%;line-height:0}
+.photo-frame img{display:block}
+.photo-markers{position:absolute;inset:5px}
+.photo-marker{position:absolute;transform:translate(-6px,-6px)}
+.photo-marker-dot{display:block;width:12px;height:12px;border-radius:50%;background:#f4f1e4;border:2px solid #6d5a3e;box-shadow:0 0 0 4px #6d5a3e33}
+.photo-marker-card{position:absolute;left:18px;top:-6px;display:flex;flex-direction:column;gap:2px;background:#fafaf3f2;border:1px solid #d7dacb;border-radius:3px;padding:6px 8px;text-align:left}
+.photo-marker-card strong{font-size:12px;font-weight:500;color:#5f6657;letter-spacing:1px}
+.photo-marker-card small{font-size:9px;color:#7c8770}
+@media(max-width:480px){.photo-marker-card{max-width:108px}}

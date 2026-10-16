@@ -315,6 +315,51 @@ export class ArchitectureViewer {
     if (this.groups[id]) this.groups[id].visible = visible;
     visible ? this.hidden.delete(id) : this.hidden.add(id);
   }
+  captureView() {
+    return {
+      position: (this.cameraMotion?.position || this.camera.position).clone(),
+      target: (this.cameraMotion?.target || this.controls.target).clone(),
+    };
+  }
+  restoreView(view) {
+    const position = view.position.clone();
+    const target = view.target.clone();
+    if (this.reducedMotion) {
+      this.cameraMotion = null;
+      this.camera.position.copy(position);
+      this.controls.target.copy(target);
+      this.controls.update();
+      return;
+    }
+    this.cameraMotion = { position, target };
+  }
+  focusPiece(id) {
+    const piece = this.pieces.get(id);
+    if (!piece || this.mode !== 'detail') return;
+    // Measure the settled explode pose. The slider is still lerping, and the neighbor should be framed where it will land.
+    const poses = this.detailParts.map(group => group.position.clone());
+    const settled = this.targetAmount;
+    this.detailParts.forEach(group => {
+      const data = group.userData;
+      const pull = this.extracted === data.id ? 1 : 0;
+      group.position.set(settled * data.xSpread, settled * data.level * 0.4 + pull * 0.15, settled * data.zSpread + pull * 1.6);
+    });
+    piece.object.updateWorldMatrix(true, true);
+    const center = new THREE.Box3().setFromObject(piece.object).getCenter(new THREE.Vector3());
+    this.detailParts.forEach((group, index) => group.position.copy(poses[index]));
+    const offset = this.camera.position.clone().sub(this.controls.target);
+    if (offset.length() < 0.5) offset.set(6, 4, 8);
+    offset.setLength(THREE.MathUtils.clamp(offset.length() * 0.72, 7, 20));
+    const position = center.clone().add(offset);
+    if (this.reducedMotion) {
+      this.cameraMotion = null;
+      this.camera.position.copy(position);
+      this.controls.target.copy(center);
+      this.controls.update();
+      return;
+    }
+    this.cameraMotion = { position, target: center };
+  }
 
   explode(value) {
     this.targetAmount = value;
