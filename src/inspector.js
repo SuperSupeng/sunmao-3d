@@ -10,12 +10,13 @@ const roles = {
 };
 
 export class ComponentInspector {
-  constructor(getObject) {
+  constructor(getObject, actions = {}) {
     this.getObject = getObject;
+    this.actions = actions;
     this.dialog = document.createElement('dialog');
     this.dialog.id = 'component-dialog';
     this.dialog.setAttribute('aria-labelledby', 'component-title');
-    this.dialog.innerHTML = `<div class="inspector-top"><span>构件特写 / 3D</span><button id="close-component" aria-label="关闭构件特写">关闭 ×</button></div><div class="inspector-layout"><div class="inspector-scene"><div id="component-viewer"></div><span class="inspector-model-note">教学形态示意 · 无尺寸比例</span><div class="inspector-view-tools"><button id="component-zoom-in" aria-label="放大构件">＋</button><button id="component-zoom-out" aria-label="缩小构件">−</button><button id="component-reset">复位</button><button id="component-rotate" aria-pressed="false">自动旋转</button></div><p class="inspector-hint">拖动旋转 · 双指或滚动缩放</p></div><div class="inspector-notes"><p class="inspector-eyebrow" id="component-category"></p><h2 id="component-title"></h2><div class="inspector-role"><span>它的作用</span><p id="component-role"></p></div><div class="inspector-connection"><span>与谁相接</span><p id="component-connection"></p></div><p id="component-description"></p><small id="component-evidence"></small></div></div>`;
+    this.dialog.innerHTML = `<div class="inspector-top"><span>构件特写 / 3D</span><button id="close-component" aria-label="关闭构件特写">关闭 ×</button></div><div class="inspector-layout"><div class="inspector-scene"><div id="component-viewer"></div><div id="component-labels" class="inspector-labels" hidden></div><span class="inspector-model-note">教学形态示意 · 无尺寸比例</span><div class="inspector-view-tools"><button id="component-zoom-in" aria-label="放大构件">＋</button><button id="component-zoom-out" aria-label="缩小构件">−</button><button id="component-reset">复位</button><button id="component-rotate" aria-pressed="false">自动旋转</button></div><p class="inspector-hint">拖动旋转 · 双指或滚动缩放</p></div><div class="inspector-notes"><p class="inspector-eyebrow" id="component-category"></p><h2 id="component-title"></h2><div class="inspector-role"><span>它的作用</span><p id="component-role"></p></div><div class="inspector-connection"><span>与谁相接</span><p id="component-connection"></p></div><p id="component-description"></p><div id="component-marks" class="inspector-marks" hidden></div><div id="component-neighbors" class="inspector-neighbors" hidden></div><small id="component-evidence"></small></div></div>`;
     document.body.append(this.dialog);
     this.dialog.querySelector('#close-component').addEventListener('click', () => this.dialog.close());
     this.dialog.querySelector('#component-zoom-in').addEventListener('click', () => this.zoom(0.8));
@@ -30,6 +31,10 @@ export class ComponentInspector {
       this.opener?.isConnected && this.opener.focus({ preventScroll: true });
     });
     this.dialog.addEventListener('click', event => {
+      const neighbor = event.target.closest('[data-neighbor]');
+      if (neighbor) { this.actions.onNeighbor?.(neighbor.dataset.neighbor); return; }
+      if (event.target.closest('[data-sample-return]')) { this.actions.onReturn?.(); return; }
+      if (event.target.closest('[data-sample-photo]')) { this.actions.onPhoto?.(); return; }
       if (event.target !== this.dialog) return;
       const r = this.dialog.getBoundingClientRect();
       if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) this.dialog.close();
@@ -59,10 +64,11 @@ export class ComponentInspector {
     this.tick = () => {
       if (!this.dialog.open) return;
       this.controls.update(); this.renderer.render(this.scene, this.camera);
+      this.updateSampleLabels();
       this.frameId = requestAnimationFrame(this.tick);
     };
   }
-  open(item) {
+  open(item, context = null) {
     const source = this.getObject(item.id);
     if (!source) return;
     this.opener = document.activeElement;
@@ -72,6 +78,7 @@ export class ComponentInspector {
     this.dialog.querySelector('#component-connection').textContent = item.connection;
     this.dialog.querySelector('#component-description').textContent = item.desc;
     this.dialog.querySelector('#component-evidence').textContent = item.evidence || '展示教学模型中的代表构件。比例、槽口与榫卯未据实测复原。';
+    this.renderSample(context);
     if (!this.dialog.open) this.dialog.showModal();
     try {
       this.initialize();
@@ -97,6 +104,7 @@ export class ComponentInspector {
       this.object.scale.setScalar(scale);
       this.radius = box.getBoundingSphere(new THREE.Sphere()).radius * scale;
       this.scene.add(this.object);
+      this.placeAnchors(context?.labels);
       this.controls.autoRotate = false;
       this.dialog.querySelector('#component-rotate').setAttribute('aria-pressed', 'false');
       this.resize(); this.reset();
@@ -104,6 +112,66 @@ export class ComponentInspector {
     } catch (error) {
       console.error('Component viewer failed:', error);
       this.dialog.querySelector('.inspector-hint').textContent = '当前无法显示放大模型，仍可查看右侧的构件说明。';
+    }
+  }
+  renderSample(context) {
+    const marks = this.dialog.querySelector('#component-marks');
+    const neighbors = this.dialog.querySelector('#component-neighbors');
+    const labels = this.dialog.querySelector('#component-labels');
+    this.sampleAnchors = null;
+    if (!context?.labels) {
+      marks.hidden = true;
+      labels.hidden = true;
+      labels.innerHTML = '';
+    } else {
+      marks.hidden = false;
+      marks.innerHTML = `<span>关键部位</span>${context.labels.map(label => `<p><strong>${label.name}</strong>${label.role}${label.caveat ? `<small>${label.caveat}</small>` : ''}</p>`).join('')}`;
+      labels.hidden = false;
+      labels.setAttribute('aria-hidden', 'true');
+      labels.innerHTML = context.labels.map(label => `<p class="part-label" data-part="${label.id}" data-side="${label.side}"><strong>${label.name}</strong><span>${label.role}</span></p>`).join('');
+    }
+    if (!context?.guided) {
+      neighbors.hidden = true;
+      neighbors.innerHTML = '';
+      return;
+    }
+    const steps = context.neighbors.filter(item => !item.current);
+    const chips = steps.map(item => `<button data-neighbor="${item.id}"><strong>${item.name}</strong><small>${item.relation}</small></button>`).join('');
+    const photo = context.home ? '<button data-sample-photo>到实景里找这件斗</button>' : '';
+    const back = context.home ? '' : `<button data-sample-return>回到${context.homeName}</button>`;
+    neighbors.hidden = false;
+    neighbors.innerHTML = `<span>${context.home ? '相邻构件' : '教学样例'}</span><div>${chips}${photo}${back}</div>`;
+  }
+  placeAnchors(labels) {
+    this.sampleAnchors = null;
+    if (!labels?.length || !this.object) return;
+    const box = new THREE.Box3().setFromObject(this.object);
+    const size = box.getSize(new THREE.Vector3());
+    this.sampleAnchors = labels.map(label => ({
+      ...label,
+      point: new THREE.Vector3(
+        box.min.x + size.x * label.at[0],
+        box.min.y + size.y * label.at[1],
+        box.min.z + size.z * label.at[2],
+      ),
+    }));
+    this.updateSampleLabels();
+  }
+  updateSampleLabels() {
+    if (!this.sampleAnchors || !this.container) return;
+    const width = this.container.clientWidth;
+    const height = this.container.clientHeight;
+    if (!width || !height) return;
+    for (const anchor of this.sampleAnchors) {
+      const el = this.dialog.querySelector(`[data-part="${anchor.id}"]`);
+      if (!el) continue;
+      const projected = anchor.point.clone().project(this.camera);
+      const x = (projected.x * 0.5 + 0.5) * width;
+      const y = (-projected.y * 0.5 + 0.5) * height;
+      const visible = projected.z < 1 && x > -40 && x < width + 40 && y > -30 && y < height + 30;
+      el.style.visibility = visible ? 'visible' : 'hidden';
+      const nudge = anchor.side === 'left' ? 'calc(-100% - 14px)' : '14px';
+      el.style.transform = `translate(${x}px, ${y}px) translate(${nudge}, -50%)`;
     }
   }
   zoom(scale) {

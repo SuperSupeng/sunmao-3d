@@ -5,7 +5,7 @@ import { homeMarkup } from './home.js';
 import { ComponentInspector } from './inspector.js';
 import { StoryTour } from './story.js';
 import { ArchitectureViewer } from './model.js';
-import { layers, hallParts, parts, sources, photos, photoReferences } from './content.js';
+import { layers, hallParts, parts, sources, photos, photoReferences, teachingSample } from './content.js';
 
 const icons = {
   arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
@@ -68,7 +68,7 @@ document.querySelector('#app').innerHTML = `
       <div class="canvas-hint">${icon('move')}拖动旋转<span>·</span>滚动缩放<span>·</span>点击构件</div>
       <section id="photo-view" class="photo-view" hidden aria-label="建筑实景对照">
         <div class="photo-switch" role="group" aria-label="实景照片">${Object.entries(photos).map(([id, p]) => `<button data-photo="${id}" class="${id === 'hall' ? 'selected' : ''}" aria-pressed="${id === 'hall'}">${p.title.split(' · ')[0]}</button>`).join('')}</div>
-        <figure><img id="reference-photo" src="${photos.hall.src}" alt="${photos.hall.alt}" /><figcaption><strong id="photo-title">${photos.hall.title}</strong><p id="photo-note">${photos.hall.note}</p><small>摄影：Patrick20242023 · 2024.02.15 · <a id="photo-source" href="${photos.hall.page}" target="_blank" rel="noopener noreferrer">原图</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> · 原图未修改</small></figcaption></figure>
+        <figure><div class="photo-frame"><img id="reference-photo" src="${photos.hall.src}" alt="${photos.hall.alt}" /><div id="photo-markers" class="photo-markers" hidden></div></div><figcaption><strong id="photo-title">${photos.hall.title}</strong><p id="photo-note">${photos.hall.note}</p><small>摄影：Patrick20242023 · 2024.02.15 · <a id="photo-source" href="${photos.hall.page}" target="_blank" rel="noopener noreferrer">原图</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> · 原图未修改</small></figcaption></figure>
         <button id="back-model" class="back-model">${icon('cube')}返回模型，继续观察 ${icon('arrow')}</button>
       </section>
     </section>
@@ -88,14 +88,46 @@ document.querySelector('#app').innerHTML = `
 `;
 
 const $ = selector => document.querySelector(selector);
-const state = { mode: 'hall', selection: null, labels: true, rotate: false, explode: 0, photo: 'hall', hidden: new Set(), fine: true, openGroup: 'frame', extracted: false, animation: null, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+const state = { mode: 'hall', selection: null, labels: true, rotate: false, explode: 0, photo: 'hall', hidden: new Set(), fine: true, openGroup: 'frame', extracted: false, animation: null, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, sampleMarker: false };
 let viewer;
 let tour;
 let page = 'home';
-const inspector = new ComponentInspector(id => viewer?.inspectionObject(id));
+let sampleHome = null;
+let awayFromSample = false;
+const inspector = new ComponentInspector(id => viewer?.inspectionObject(id), {
+  onNeighbor: id => viewNeighbor(id),
+  onReturn: () => returnToSample(),
+  onPhoto: () => openSamplePhoto(),
+});
 let noticeTimer;
 function notify(message) { $('#notice').textContent = message; $('#notice').classList.add('show'); clearTimeout(noticeTimer); noticeTimer = setTimeout(() => $('#notice').classList.remove('show'), 5000); }
 
+function pieceName(id) {
+  return viewer?.pieces.get(id)?.name || '';
+}
+function sampleContext(item) {
+  if (!item) return null;
+  const inStory = document.body.dataset.story === 'active';
+  const isHome = item.id === teachingSample.piece;
+  const neighbor = teachingSample.neighbors.some(entry => entry.id === item.id);
+  if (!isHome && !(neighbor && sampleHome)) return null;
+  if (inStory && !isHome) return null;
+  return {
+    home: isHome,
+    guided: !inStory,
+    labels: isHome ? teachingSample.labels : null,
+    homeName: pieceName(teachingSample.piece) || teachingSample.title,
+    neighbors: teachingSample.neighbors.map(entry => ({
+      ...entry,
+      name: pieceName(entry.id),
+      current: entry.id === item.id,
+    })),
+  };
+}
+function freezeSampleHome() {
+  if (!viewer || awayFromSample || state.mode !== 'detail' || state.selection !== teachingSample.piece) return;
+  sampleHome = { mode: 'detail', explode: state.explode, selection: teachingSample.piece, camera: viewer.captureView() };
+}
 function getItem(id) {
   const piece = viewer?.pieces.get(id);
   if (piece) return { ...parts.find(p => p.id === piece.type), id, name: piece.name, type: piece.type, number: piece.number, piece: true, photo: 'dougong' };
@@ -111,7 +143,7 @@ function renderCatalog() {
   $('#layer-list').innerHTML = (detail ? parts : layers).map((item, i) => {
     const children = detail ? [...(viewer?.pieces.values() || [])].filter(p => p.type === item.id) : hallParts.filter(p => p.parent === item.id);
     const opened = state.openGroup === item.id;
-    return `<section class="catalog-group"><div class="layer-row ${groupId === item.id ? 'active' : ''} ${state.hidden.has(item.id) ? 'muted' : ''}" data-layer="${item.id}"><button class="layer-select" data-select="${item.id}" aria-pressed="${state.selection === item.id}"><span class="layer-number">${String(i + 1).padStart(2, '0')}</span><span class="layer-swatch" style="--swatch:${item.color || ['#90664c', '#c3a071', '#a47c50', '#79563c'][i]}"></span><span class="layer-name">${item.name}<small>${children.length ? `${children.length} ${detail ? '件' : '类'}构件 · 点击展开` : item.sub || item.en}</small></span></button>${children.length ? `<button class="catalog-expand" data-expand="${item.id}" aria-label="${opened ? '收起' : '展开'}${item.name}目录" aria-expanded="${opened}">${opened ? '−' : '+'}</button>` : ''}${!detail ? eye(item) : ''}</div>${children.length ? `<div class="member-list" ${opened ? '' : 'hidden'}>${children.map(child => `<div class="member-row ${state.hidden.has(child.id) ? 'muted' : ''}"><button class="member-select ${state.selection === child.id ? 'selected' : ''}" data-select="${child.id}" aria-pressed="${state.selection === child.id}"><span>${detail ? String(child.number).padStart(2, '0') : '└'}</span>${child.name}</button>${!detail ? eye(child) : ''}</div>`).join('')}</div>` : ''}</section>`;
+    return `<section class="catalog-group"><div class="layer-row ${groupId === item.id ? 'active' : ''} ${state.hidden.has(item.id) ? 'muted' : ''}" data-layer="${item.id}"><button class="layer-select" data-select="${item.id}" aria-pressed="${state.selection === item.id}"><span class="layer-number">${String(i + 1).padStart(2, '0')}</span><span class="layer-swatch" style="--swatch:${item.color || ['#90664c', '#c3a071', '#a47c50', '#79563c'][i]}"></span><span class="layer-name">${item.name}<small>${children.length ? `${children.length} ${detail ? '件' : '类'}构件 · 点击展开` : item.sub || item.en}</small></span></button>${children.length ? `<button class="catalog-expand" data-expand="${item.id}" aria-label="${opened ? '收起' : '展开'}${item.name}目录" aria-expanded="${opened}">${opened ? '−' : '+'}</button>` : ''}${!detail ? eye(item) : ''}</div>${children.length ? `<div class="member-list" ${opened ? '' : 'hidden'}>${children.map(child => `<div class="member-row ${state.hidden.has(child.id) ? 'muted' : ''}"><button class="member-select ${state.selection === child.id ? 'selected' : ''}" data-select="${child.id}" aria-pressed="${state.selection === child.id}"><span>${detail ? String(child.number).padStart(2, '0') : '└'}</span>${child.name}${child.id === teachingSample.piece ? '<em class="sample-tag">样例</em>' : ''}</button>${!detail ? eye(child) : ''}</div>`).join('')}</div>` : ''}</section>`;
   }).join('');
   $('#layer-list').querySelectorAll('[data-select]').forEach(b => b.addEventListener('click', () => select(b.dataset.select, !layers.some(p => p.id === b.dataset.select))));
   $('#layer-list').querySelectorAll('[data-visibility]').forEach(b => b.addEventListener('click', () => toggleVisibility(b.dataset.visibility)));
@@ -120,13 +152,29 @@ function renderCatalog() {
 function renderInfo() {
   const item = getItem(state.selection);
   if (!item) {
-    $('#info-card').innerHTML = `<div class="info-eyebrow">从这里开始 ${icon('compass')}</div><h3>屋顶，如何被托起？</h3><p>选择“按构件”展开，分别看看梁、檩和椽。点开目录，还能继续辨认柱、阑额与普拍枋。</p><button class="text-action" id="enter-detail">走近一组斗拱 ${icon('arrow')}</button>`;
+    $('#info-card').innerHTML = `<div class="info-eyebrow">从这里开始 ${icon('compass')}</div><h3>屋顶，如何被托起？</h3><p>选择“按构件”展开，分别看看梁、檩和椽。点开目录，还能继续辨认柱、阑额与普拍枋。</p><button class="text-action" id="enter-detail">走近一组斗拱 ${icon('arrow')}</button><button class="text-action" id="start-sample">从这个斗开始 ${icon('arrow')}</button>`;
   } else {
-    $('#info-card').innerHTML = `<div class="info-eyebrow">${item.en}<span>${item.piece ? `第 ${String(item.number).padStart(2, '0')} 件 / 共 14 件` : '构件笔记'}</span></div><h3>${item.name}</h3><p>${item.desc}</p><div class="connection">${icon('layers')}<span>${item.connection}</span></div>${item.tip ? `<p class="info-tip">${item.tip}</p>` : ''}${item.id === 'dougong' ? `<button class="text-action" id="enter-detail">逐件拆开这一组斗拱 ${icon('arrow')}</button>` : ''}${item.photo ? (photos[item.photo] ? `<button class="text-action" id="compare-photo">对照实景照片 ${icon('photo')}</button>` : `<a class="text-action" href="${photoReferences[item.photo].page}" target="_blank" rel="noopener noreferrer">查阅${photoReferences[item.photo].title} ↗</a>`) : ''}<button class="text-action" id="inspect-component">放大观察 · 看作用 ${icon('cube')}</button><small class="evidence">${item.evidence || (item.piece || parts.some(p => p.id === item.id) ? '通用教学模型 · 14 件为本示意件数，非实物构件清单；槽口未据实测复原。' : '构件方向与组合关系示意 · 数量、尺寸与排布未据实测复原。')}</small>`;
+    const samplePiece = item.id === teachingSample.piece;
+    const sampleNeighbor = Boolean(sampleHome) && teachingSample.neighbors.some(entry => entry.id === item.id);
+    const photoButton = item.photo ? (photos[item.photo] ? `<button class="text-action" id="${samplePiece ? 'sample-photo' : 'compare-photo'}">${samplePiece ? '到实景里找这件斗' : '对照实景照片'} ${icon('photo')}</button>` : `<a class="text-action" href="${photoReferences[item.photo].page}" target="_blank" rel="noopener noreferrer">查阅${photoReferences[item.photo].title} ↗</a>`) : '';
+    $('#info-card').innerHTML = `<div class="info-eyebrow">${item.en}<span>${item.piece ? `第 ${String(item.number).padStart(2, '0')} 件 / 共 14 件` : '构件笔记'}</span></div><h3>${item.name}</h3><p>${item.desc}</p><div class="connection">${icon('layers')}<span>${item.connection}</span></div>${item.tip ? `<p class="info-tip">${item.tip}</p>` : ''}${sampleCard(samplePiece, sampleNeighbor)}${item.id === 'dougong' ? `<button class="text-action" id="enter-detail">逐件拆开这一组斗拱 ${icon('arrow')}</button><button class="text-action" id="start-sample">从这个斗开始 ${icon('arrow')}</button>` : ''}${photoButton}<button class="text-action" id="inspect-component">放大观察 · 看作用 ${icon('cube')}</button><small class="evidence">${item.evidence || (item.piece || parts.some(p => p.id === item.id) ? '通用教学模型 · 14 件为本示意件数，非实物构件清单；槽口未据实测复原。' : '构件方向与组合关系示意 · 数量、尺寸与排布未据实测复原。')}</small>`;
   }
   $('#inspect-component')?.addEventListener('click', () => inspectSelected());
   $('#enter-detail')?.addEventListener('click', () => changeMode('detail'));
-  $('#compare-photo')?.addEventListener('click', () => { state.photo = item.photo; changeMode('photo'); $('.stage').scrollIntoView({ behavior: state.reduced ? 'instant' : 'smooth' }); });
+  $('#start-sample')?.addEventListener('click', startSample);
+  $('#sample-photo')?.addEventListener('click', openSamplePhoto);
+  $('#return-sample')?.addEventListener('click', returnToSample);
+  $('#info-card').querySelectorAll('[data-neighbor]').forEach(button => button.addEventListener('click', () => viewNeighbor(button.dataset.neighbor)));
+  $('#compare-photo')?.addEventListener('click', () => { state.sampleMarker = false; state.photo = item.photo; changeMode('photo'); $('.stage').scrollIntoView({ behavior: state.reduced ? 'instant' : 'smooth' }); });
+}
+function sampleCard(samplePiece, sampleNeighbor) {
+  if (document.body.dataset.story === 'active') return '';
+  if (samplePiece) {
+    const chips = teachingSample.neighbors.map(entry => `<button class="sample-chip" data-neighbor="${entry.id}">${pieceName(entry.id)}<small>${entry.relation}</small></button>`).join('');
+    return `<div class="sample-path"><p class="sample-kicker">${teachingSample.kicker} · ${teachingSample.title}</p><p>${teachingSample.blurb}</p><div class="sample-chips">${chips}</div></div>`;
+  }
+  if (sampleNeighbor) return `<button class="text-action" id="return-sample">回到${pieceName(teachingSample.piece) || teachingSample.title} ${icon('reset')}</button>`;
+  return '';
 }
 function updateSelectionTools() {
   const item = getItem(state.selection);
@@ -150,7 +198,7 @@ function select(id, inspect = false) {
   viewer?.select(id);
   renderCatalog(); renderInfo(); buildLabels(); updateSelectionTools();
   tour?.record('select', item?.type || id);
-  if (inspect && item) inspector.open(item);
+  if (inspect && item) inspector.open(item, sampleContext(item));
 }
 function toggleVisibility(id) {
   const visible = state.hidden.has(id);
@@ -163,29 +211,89 @@ function buildLabels() {
   $('#labels').innerHTML = labels.map(p => `<button class="model-label" data-label="${p.id}"><span></span>${p.name}</button>`).join('');
   $('#labels').querySelectorAll('button').forEach(b => b.addEventListener('click', () => select(b.dataset.label, true)));
 }
-function changeMode(mode) {
-  if (!viewer && mode !== 'photo') { notify('当前设备暂不支持 3D，请先查看实景和构件说明。'); return; }
-  stopAnimation();
-  const was = state.mode; state.mode = mode;
-  state.extracted = false; viewer?.extract(null);
+function syncModeChrome(mode) {
   document.body.dataset.mode = mode;
-  $('#nav-model').classList.toggle('active', mode !== 'photo' && !tour?.active); $('#nav-photo').classList.toggle('active', mode === 'photo' && !tour?.active);
-  $('#nav-model').setAttribute('aria-current', mode !== 'photo' && !tour?.active ? 'page' : 'false'); $('#nav-photo').setAttribute('aria-current', mode === 'photo' && !tour?.active ? 'page' : 'false');
-  $('#mode-hall').classList.toggle('selected', mode === 'hall'); $('#mode-detail').classList.toggle('selected', mode === 'detail');
-  $('#mode-hall').setAttribute('aria-pressed', mode === 'hall'); $('#mode-detail').setAttribute('aria-pressed', mode === 'detail');
-  $('#photo-view').hidden = mode !== 'photo'; $('#viewer').style.visibility = mode === 'photo' ? 'hidden' : 'visible';
-  viewer?.setMode(mode);
-  if (mode !== 'photo' && mode !== was) { state.selection = null; viewer?.select(null); setExplode(0); }
+  const exploring = mode !== 'photo' && !tour?.active;
+  const photographing = mode === 'photo' && !tour?.active;
+  $('#nav-model').classList.toggle('active', exploring);
+  $('#nav-photo').classList.toggle('active', photographing);
+  $('#nav-model').setAttribute('aria-current', exploring ? 'page' : 'false');
+  $('#nav-photo').setAttribute('aria-current', photographing ? 'page' : 'false');
+  $('#mode-hall').classList.toggle('selected', mode === 'hall');
+  $('#mode-detail').classList.toggle('selected', mode === 'detail');
+  $('#mode-hall').setAttribute('aria-pressed', mode === 'hall');
+  $('#mode-detail').setAttribute('aria-pressed', mode === 'detail');
+  $('#photo-view').hidden = mode !== 'photo';
+  $('#viewer').style.visibility = mode === 'photo' ? 'hidden' : 'visible';
   $('#model-note').textContent = mode === 'detail' ? '通用斗拱关系示意 / 非实测复原' : '教学示意 / 非测绘复原';
   $('#explode-label').textContent = mode === 'detail' ? '构件展开' : '结构展开';
   $('#range-middle').textContent = mode === 'detail' ? '逐件辨认' : '显露木构';
   $('#range-start').textContent = mode === 'detail' ? '合拢构件' : '完整建筑';
   $('#granularity').hidden = mode !== 'hall';
+  if (mode === 'photo') showPhoto(state.photo);
+}
+function changeMode(mode) {
+  if (!viewer && mode !== 'photo') { notify('当前设备暂不支持 3D，请先查看实景和构件说明。'); return; }
+  stopAnimation();
+  const was = state.mode; state.mode = mode;
+  state.extracted = false; viewer?.extract(null);
+  viewer?.setMode(mode);
+  if (was === 'photo' && mode !== 'photo') state.sampleMarker = false;
+  if (mode !== 'photo' && mode !== was) { state.selection = null; viewer?.select(null); setExplode(0); }
+  syncModeChrome(mode);
   buildLabels(); renderCatalog(); renderInfo();
   $('#mobile-selection').hidden = true;
   if (mode === 'detail' && mode !== was) select('piece-2');
   updateSelectionTools();
-  if (mode === 'photo') showPhoto(state.photo);
+}
+function startSample() {
+  if (!viewer) { notify('当前设备暂不支持 3D，请先查看实景和构件说明。'); return; }
+  awayFromSample = false;
+  sampleHome = null;
+  if (state.mode !== 'detail') changeMode('detail');
+  else if (state.selection !== teachingSample.piece) select(teachingSample.piece);
+  if (state.explode < 15) setExplode(40);
+  sampleHome = { mode: 'detail', explode: state.explode, selection: teachingSample.piece, camera: viewer.captureView() };
+  awayFromSample = false;
+  state.sampleMarker = false;
+  inspector.open(getItem(teachingSample.piece), sampleContext(getItem(teachingSample.piece)));
+}
+function viewNeighbor(id) {
+  if (!viewer || !teachingSample.neighbors.some(entry => entry.id === id)) return;
+  if (state.mode !== 'detail') changeMode('detail');
+  freezeSampleHome();
+  awayFromSample = true;
+  if (state.explode < 15) setExplode(40);
+  select(id, inspector.dialog.open);
+  viewer.focusPiece(id);
+  notify(`相邻构件 · ${pieceName(id)}`);
+}
+function returnToSample() {
+  if (!viewer) return;
+  const home = sampleHome || { mode: 'detail', explode: state.explode, selection: teachingSample.piece, camera: viewer.captureView() };
+  const reopen = inspector.dialog.open;
+  stopAnimation();
+  state.sampleMarker = false;
+  state.extracted = false;
+  viewer.extract(null);
+  awayFromSample = false;
+  state.mode = home.mode;
+  viewer.setMode(home.mode);
+  setExplode(home.explode);
+  if (home.camera) viewer.restoreView(home.camera);
+  syncModeChrome(home.mode);
+  select(home.selection, reopen);
+  notify(`已回到${pieceName(home.selection) || teachingSample.title}`);
+  if (!reopen) $('#inspect-component')?.focus({ preventScroll: true });
+}
+function openSamplePhoto() {
+  if (state.mode === 'detail' && state.selection === teachingSample.piece) freezeSampleHome();
+  awayFromSample = true;
+  state.sampleMarker = true;
+  state.photo = teachingSample.photo;
+  if (inspector.dialog.open) inspector.dialog.close();
+  changeMode('photo');
+  $('.stage').scrollIntoView({ behavior: state.reduced ? 'instant' : 'smooth' });
 }
 function setExplode(value) {
   if (state.extracted) { state.extracted = false; viewer?.extract(null); updateSelectionTools(); }
@@ -213,8 +321,19 @@ function animateExplode(target) {
 }
 function showPhoto(id) {
   state.photo = id; const p = photos[id];
+  const marked = state.sampleMarker && id === teachingSample.photo && document.body.dataset.story !== 'active';
+  const sampleReturn = state.sampleMarker && sampleHome && document.body.dataset.story !== 'active';
   $('#reference-photo').src = p.src; $('#reference-photo').alt = p.alt;
-  $('#photo-title').textContent = p.title; $('#photo-note').textContent = p.note; $('#photo-source').href = p.page;
+  $('#photo-title').textContent = p.title;
+  $('#photo-note').textContent = marked ? teachingSample.marker.note : p.note;
+  $('#photo-source').href = p.page;
+  const markers = $('#photo-markers');
+  markers.hidden = !marked;
+  if (marked) {
+    const marker = teachingSample.marker;
+    markers.innerHTML = `<div class="photo-marker" style="left:${marker.x}%;top:${marker.y}%" role="img" aria-label="${marker.name}，${marker.role}。教学观察点，不是实测定位。"><span class="photo-marker-dot"></span><span class="photo-marker-card"><strong>${marker.name}</strong><small>${marker.role}</small></span></div>`;
+  }
+  $('#back-model').innerHTML = sampleReturn ? `${icon('cube')}回到这件斗 ${icon('arrow')}` : `${icon('cube')}返回模型，继续观察 ${icon('arrow')}`;
   document.querySelectorAll('[data-photo]').forEach(b => { b.classList.toggle('selected', b.dataset.photo === id); b.setAttribute('aria-pressed', b.dataset.photo === id); });
 }
 function toggleExtract() {
@@ -241,7 +360,7 @@ $('#mode-hall').addEventListener('click', () => manualMode('hall'));
 $('#mode-detail').addEventListener('click', () => manualMode('detail'));
 $('#nav-model').addEventListener('click', () => manualMode('hall'));
 $('#nav-photo').addEventListener('click', () => { state.photo = state.mode === 'detail' ? 'dougong' : 'hall'; manualMode('photo'); });
-$('#back-model').addEventListener('click', () => changeMode(state.photo === 'dougong' ? 'detail' : 'hall'));
+$('#back-model').addEventListener('click', () => { if (state.sampleMarker && sampleHome) returnToSample(); else changeMode(state.photo === 'dougong' ? 'detail' : 'hall'); });
 $('#explode').addEventListener('input', e => { stopAnimation(); setExplode(Number(e.target.value)); });
 $('#assemble').addEventListener('click', () => state.animation ? stopAnimation() : animateExplode(state.explode > 50 ? 0 : 100));
 $('#reset-view').addEventListener('click', () => { viewer?.reset(); notify('视角已复位'); });
@@ -306,7 +425,7 @@ tour = new StoryTour($('#story-panel'), {
   },
 });
 
-function inspectSelected() { const item = getItem(state.selection); if (item) inspector.open(item); }
+function inspectSelected() { const item = getItem(state.selection); if (item) inspector.open(item, sampleContext(item)); }
 function showPage(next, push = true, startStory = false) {
   stopAnimation();
   if (inspector.dialog.open) inspector.dialog.close();
