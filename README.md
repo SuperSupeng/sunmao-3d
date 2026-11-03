@@ -76,12 +76,46 @@ pnpm dev
 
 | 地址 | 页面 |
 | --- | --- |
-| `/` | 观木首页 |
-| `/#/dayun` | 大云院弥陀殿探索页 |
+| `/` | 观木首页（三维应用） |
+| `/#/dayun` | 大云院弥陀殿交互探索。井号只在浏览器里切换首页和建筑页，**不算**可抓取落地页 |
+| `/dayun` | 大云院 · 交互学习入口 |
+| `/mituo-dian` | 弥陀殿 · 故事与拆解 |
+| `/dougong` | 斗栱是什么 · 从大斗学起 |
+| `/components` | 古建筑构件入门 · 以大云院为例 |
+| `/shanxi-ancient-architecture` | 山西古建筑怎么看 · 大云院样例 |
+| `/en/dougong` | What is dougong · learn from a Chinese wooden hall |
+| `/en/chinese-wooden-architecture` | Chinese wooden architecture · a walkthrough of Dayun Temple |
+| `/en/dayun-temple` | Dayun Temple · Amitabha Hall interactive guide |
+| `/sitemap.xml` | 站点地图，含首页和上面八条阅读页 |
+| `/robots.txt` | 允许抓取，并指向站点地图 |
 
-故事和构件特写在建筑页面中打开，目前没有独立分享地址。点击左上角“观木”返回首页；支持浏览器前进、后退与建筑页面刷新。故事进度仅保存在本次页面会话中，刷新或重新开始后重置。
+故事和构件特写仍在建筑页里打开，没有各自的分享地址。阅读页是独立 HTML，正文在首次响应里，并链到 `/#/dayun`。点击左上角“观木”返回首页；建筑页支持浏览器前进、后退与刷新。故事进度只保存在当次会话里。
 
-项目尚未部署。`pnpm build` 仅生成静态文件，不会自动发布网站。
+规范链接、站点地图和 `robots.txt` 使用生产主机 `https://guanmu.darren-su.com`。`pnpm build` 只生成 `dist/`，不会在本地自动发布。
+
+### 可抓取落地页
+
+八条阅读页的标题和正文写在 [seo/landings.js](./seo/landings.js)。`pnpm build` 时 Vite 插件把它们写成 `dist/<路径>.html`，并写出 `dist/sitemap.xml`、`dist/robots.txt` 和 `dist/seo/landing.css`。开发服务和 `vite preview` 也直接响应这些路径。
+
+`vercel.json` 在通用 SPA 回写之前，把八条干净路径指到对应的 `.html`。带斜杠或带 `.html` 的地址会永久重定向到干净路径。非约束性判断：若只依赖「目录索引先于 `/(.*)` → `/index.html`」，阅读页可能仍落到没有正文的应用壳，所以这里用显式回写，不把这件事留给托管平台的默认顺序。
+
+本地核对（先 `pnpm build`，再 `pnpm preview --port 4173`）：
+
+```sh
+curl -fsS http://127.0.0.1:4173/dayun | grep -o '<title>[^<]*</title>'
+curl -fsS http://127.0.0.1:4173/mituo-dian | grep -o '<h1>[^<]*</h1>'
+curl -fsS http://127.0.0.1:4173/dougong | grep -o '<p class="lead">[^<]*'
+curl -fsS http://127.0.0.1:4173/components | grep -o '<h1>[^<]*</h1>'
+curl -fsS http://127.0.0.1:4173/shanxi-ancient-architecture | grep -o '<h1>[^<]*</h1>'
+curl -fsS http://127.0.0.1:4173/en/dougong | grep -o '<h1>[^<]*</h1>'
+curl -fsS http://127.0.0.1:4173/en/chinese-wooden-architecture | grep -o '<h1>[^<]*</h1>'
+curl -fsS http://127.0.0.1:4173/en/dayun-temple | grep -o '<h1>[^<]*</h1>'
+curl -fsS http://127.0.0.1:4173/sitemap.xml
+curl -fsS http://127.0.0.1:4173/robots.txt
+curl -sI http://127.0.0.1:4173/dayun/ | head -n 1
+```
+
+预览或生产上，八条路径的响应正文应含对应 `<title>`、`<h1>` 和第一段说明；`sitemap.xml` 应包含八条绝对地址；`robots.txt` 应允许抓取并带有 `Sitemap:` 行。`/#/dayun` 仍打开原来的三维页面。
 
 ## 内容与模型边界
 
@@ -107,7 +141,14 @@ pnpm dev
 
 ```text
 sunmao-3d/
-├── index.html          # 页面入口
+├── index.html          # 三维应用入口
+├── vite.config.js      # 构建时写出阅读页、sitemap、robots
+├── vercel.json         # 阅读页回写，以及其余路径的 SPA 回退
+├── seo/
+│   ├── landings.js     # 八条阅读页文案，以及 HTML / sitemap / robots
+│   ├── plugin.js       # 开发、预览与构建时提供这些路径
+│   ├── landing.css     # 阅读页样式
+│   └── check.js        # 构建前检查标题、路径、站点地图与回写
 ├── src/
 │   ├── main.js         # 页面装配、交互状态与 hash 导航
 │   ├── home.js         # 首页模板与当前建筑目录
@@ -136,7 +177,8 @@ sunmao-3d/
 | 特写中的简短作用说明 | `src/inspector.js` 中的 `roles` |
 | 模型形状、位置与拆解方式 | `src/model.js` |
 | 故事文案与章节 | `src/content.js`；行为与反馈逻辑在 `src/story.js` |
-| 首页建筑卡片 | `src/home.js` |
+| 首页建筑卡片与阅读页链接 | `src/home.js` |
+| 八条可抓取阅读页、站点地图、robots | `seo/landings.js`；路由在 `vercel.json` |
 | 页面切换与各模块联动 | `src/main.js` |
 | 底部大斗教学样例 | `src/content.js` 的 `teachingSample`；特写标注在 `src/inspector.js` |
 

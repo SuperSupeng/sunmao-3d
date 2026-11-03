@@ -3,5 +3,33 @@
   "framework": "vite",
   "buildCommand": "pnpm build",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "redirects": [
+    { "source": "/dayun/", "destination": "/dayun", "permanent": true },
+    { "source": "/dayun.html", "destination": "/dayun", "permanent": true },
+    { "source": "/mituo-dian/", "destination": "/mituo-dian", "permanent": true },
+    { "source": "/mituo-dian.html", "destination": "/mituo-dian", "permanent": true },
+    { "source": "/dougong/", "destination": "/dougong", "permanent": true },
+    { "source": "/dougong.html", "destination": "/dougong", "permanent": true },
+    { "source": "/components/", "destination": "/components", "permanent": true },
+    { "source": "/components.html", "destination": "/components", "permanent": true },
+    { "source": "/shanxi-ancient-architecture/", "destination": "/shanxi-ancient-architecture", "permanent": true },
+    { "source": "/shanxi-ancient-architecture.html", "destination": "/shanxi-ancient-architecture", "permanent": true },
+    { "source": "/en/dougong/", "destination": "/en/dougong", "permanent": true },
+    { "source": "/en/dougong.html", "destination": "/en/dougong", "permanent": true },
+    { "source": "/en/chinese-wooden-architecture/", "destination": "/en/chinese-wooden-architecture", "permanent": true },
+    { "source": "/en/chinese-wooden-architecture.html", "destination": "/en/chinese-wooden-architecture", "permanent": true },
+    { "source": "/en/dayun-temple/", "destination": "/en/dayun-temple", "permanent": true },
+    { "source": "/en/dayun-temple.html", "destination": "/en/dayun-temple", "permanent": true }
+  ],
+  "rewrites": [
+    { "source": "/dayun", "destination": "/dayun.html" },
+    { "source": "/mituo-dian", "destination": "/mituo-dian.html" },
+    { "source": "/dougong", "destination": "/dougong.html" },
+    { "source": "/components", "destination": "/components.html" },
+    { "source": "/shanxi-ancient-architecture", "destination": "/shanxi-ancient-architecture.html" },
+    { "source": "/en/dougong", "destination": "/en/dougong.html" },
+    { "source": "/en/chinese-wooden-architecture", "destination": "/en/chinese-wooden-architecture.html" },
+    { "source": "/en/dayun-temple", "destination": "/en/dayun-temple.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
