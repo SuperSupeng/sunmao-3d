@@ -14,6 +14,8 @@ const LOCKED = [
   ['/en/dougong', 'What is dougong · learn from a Chinese wooden hall'],
   ['/en/chinese-wooden-architecture', 'Chinese wooden architecture · a walkthrough of Dayun Temple'],
   ['/en/dayun-temple', 'Dayun Temple · Amitabha Hall interactive guide'],
+  ['/pupai-fang', '普拍枋是什么 · 作用与怎么看'],
+  ['/lan-e', '阑额是什么 · 作用与怎么看'],
 ];
 
 function fail(message) {
