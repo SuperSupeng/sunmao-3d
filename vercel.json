@@ -19,7 +19,11 @@
     { "source": "/en/chinese-wooden-architecture/", "destination": "/en/chinese-wooden-architecture", "permanent": true },
     { "source": "/en/chinese-wooden-architecture.html", "destination": "/en/chinese-wooden-architecture", "permanent": true },
     { "source": "/en/dayun-temple/", "destination": "/en/dayun-temple", "permanent": true },
-    { "source": "/en/dayun-temple.html", "destination": "/en/dayun-temple", "permanent": true }
+    { "source": "/en/dayun-temple.html", "destination": "/en/dayun-temple", "permanent": true },
+    { "source": "/pupai-fang/", "destination": "/pupai-fang", "permanent": true },
+    { "source": "/pupai-fang.html", "destination": "/pupai-fang", "permanent": true },
+    { "source": "/lan-e/", "destination": "/lan-e", "permanent": true },
+    { "source": "/lan-e.html", "destination": "/lan-e", "permanent": true }
   ],
   "rewrites": [
     { "source": "/dayun", "destination": "/dayun.html" },
@@ -30,6 +34,8 @@
     { "source": "/en/dougong", "destination": "/en/dougong.html" },
     { "source": "/en/chinese-wooden-architecture", "destination": "/en/chinese-wooden-architecture.html" },
     { "source": "/en/dayun-temple", "destination": "/en/dayun-temple.html" },
+    { "source": "/pupai-fang", "destination": "/pupai-fang.html" },
+    { "source": "/lan-e", "destination": "/lan-e.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

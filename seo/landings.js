@@ -27,6 +27,12 @@ const dougongFigure = {
   caption: `摄影 Patrick20242023，2024-02-15。[Wikimedia Commons 原图](${DOUGONG_PAGE}) · [CC BY 4.0](${CC})。照片文件未改。若交互页在照片上打点，那是教学观察点，不是实测定位。`,
 };
 
+const columnTieFigure = {
+  src: '/images/dayun-dougong.jpg',
+  alt: '大云院弥陀殿柱头铺作近照，檐下斗栱和柱头附近的横向木件',
+  caption: `摄影 Patrick20242023，2024-02-15。[Wikimedia Commons 原图](${DOUGONG_PAGE}) · [CC BY 4.0](${CC})。照片文件未改。用它对照柱头附近的横木，不能把它当成阑额或普拍枋的实测定位。`,
+};
+
 const dougongFigureEn = {
   src: '/images/dayun-dougong.jpg',
   alt: 'Column-top bracket set at Dayun Temple, showing bearing blocks, bracket arms, and the flat tie below',
@@ -389,6 +395,82 @@ export const pages = [
       },
     ],
   },
+  {
+    path: '/pupai-fang',
+    lang: 'zh-CN',
+    title: '普拍枋是什么 · 作用与怎么看',
+    eyebrow: '构件 · 阑额上方',
+    lead: '普拍枋是阑额上方的一条扁宽水平枋，给上面的铺作一个承接的位置。这一页说明它是什么、起什么作用，以及在大云院教学模型里怎么看。模型是教学示意，不是测绘复原。',
+    cta: { href: '/#/dayun', label: '到模型里找这条枋' },
+    figure: dougongFigure,
+    sections: [
+      {
+        heading: '是什么',
+        paragraphs: [
+          '普拍枋铺在柱头这一层，比下面的阑额更扁、更宽，是一条水平木件。交互按钮把斗栱写成「斗拱」，普拍枋就在那一组木头的下面。',
+          '这里只按教学模型里的位置来认。截面、长度和它与柱头的真实交接，都没有按实测复原。',
+        ],
+      },
+      {
+        heading: '作用',
+        paragraphs: [
+          '它为上部铺作提供承接。先找到这条水平线，再向上看斗和栱，柱头和屋檐之间的关系会清楚一些。模型顶部的槽口只说明木头要相接，不能用来判断真实榫卯。',
+        ],
+      },
+      {
+        heading: '怎么看',
+        items: [
+          '打开 [#/dayun](/#/dayun)。井号只是交互深链。整殿里进入「柱与枋」，普拍枋和阑额是分开的两项，可以单独显隐。',
+          '再切到「斗拱局部」。底部横铺的那件就是普拍枋。样例从底部大斗开始，相邻构件里可以点到它。',
+          '回到柱头铺作的照片，找斗栱下面那条扁宽横木。照片上的点如果出现，是教学观察点，不是实测定位。',
+        ],
+      },
+      {
+        heading: '接着看',
+        paragraphs: [
+          '斗栱整组怎么从大斗看起，见 [斗栱是什么](/dougong)。它下面那根联系柱子的横木，见 [阑额是什么](/lan-e)。五层和八类构件的名词表在 [古建筑构件入门](/components)。',
+        ],
+      },
+    ],
+  },
+  {
+    path: '/lan-e',
+    lang: 'zh-CN',
+    title: '阑额是什么 · 作用与怎么看',
+    eyebrow: '构件 · 柱头之间',
+    lead: '阑额在柱头附近，横向把相邻的柱子联系起来。教学模型把它和上方更扁宽的普拍枋分开显示，方便比较两层的位置。这一页说明它是什么、起什么作用、怎么看。模型不是测绘复原。',
+    cta: { href: '/#/dayun', label: '到模型里看柱与枋' },
+    figure: columnTieFigure,
+    sections: [
+      {
+        heading: '是什么',
+        paragraphs: [
+          '阑额是柱头附近的横向木件，连接相邻的木柱。它不是普拍枋。普拍枋在它上方，更扁更宽，用来承接铺作。',
+          '模型把这两件分开画，是为了能单独点选和显隐。分开显示不代表实物之间有这么大的空隙，也不能当成测绘图。',
+        ],
+      },
+      {
+        heading: '作用',
+        paragraphs: [
+          '在这个教学模型里，阑额的作用是把相邻柱头连起来，让竖向的柱有一条横向联系。这里不讲受力计算，也不把简化的截面当成这座殿的实测尺寸。',
+        ],
+      },
+      {
+        heading: '怎么看',
+        items: [
+          '打开 [#/dayun](/#/dayun)，在整殿的「柱与枋」里点「阑额」。它和「普拍枋」是目录里的两项。',
+          '从正面看柱间：先找柱头之间那根横向联系的木件，再看它上面还有没有一条更扁宽的枋。',
+          '柱头铺作的照片里，斗栱下面先容易看到普拍枋；阑额更靠近柱头。用照片对照层次即可，不能把它当作阑额的实测定位。',
+        ],
+      },
+      {
+        heading: '接着看',
+        paragraphs: [
+          '上面那条扁宽枋见 [普拍枋是什么](/pupai-fang)。整座殿的名词表在 [古建筑构件入门](/components)。交互仍从 [#/dayun](/#/dayun) 进入，这个井号地址不是落地页。',
+        ],
+      },
+    ],
+  },
 ];
 
 const enPath = [
@@ -496,7 +578,7 @@ export function renderPage(page) {
     <p class="brand-note">${brandNote}</p>
     <nav class="header-nav" aria-label="${page.lang === 'en' ? 'Page' : '本页'}">
       <a href="/#/dayun">${enter}</a>
-      <a href="${page.langSwitch.href}" hreflang="${page.lang === 'en' ? 'zh-CN' : 'en'}">${escapeHtml(page.langSwitch.label)}</a>
+      ${page.langSwitch ? `<a href="${escapeHtml(page.langSwitch.href)}" hreflang="${page.lang === 'en' ? 'zh-CN' : 'en'}">${escapeHtml(page.langSwitch.label)}</a>` : ''}
     </nav>
   </header>
   <main id="content">

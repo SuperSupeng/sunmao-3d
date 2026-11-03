@@ -82,11 +82,13 @@ pnpm dev
 | `/mituo-dian` | 弥陀殿 · 故事与拆解 |
 | `/dougong` | 斗栱是什么 · 从大斗学起 |
 | `/components` | 古建筑构件入门 · 以大云院为例 |
+| `/pupai-fang` | 普拍枋是什么 · 作用与怎么看 |
+| `/lan-e` | 阑额是什么 · 作用与怎么看 |
 | `/shanxi-ancient-architecture` | 山西古建筑怎么看 · 大云院样例 |
 | `/en/dougong` | What is dougong · learn from a Chinese wooden hall |
 | `/en/chinese-wooden-architecture` | Chinese wooden architecture · a walkthrough of Dayun Temple |
 | `/en/dayun-temple` | Dayun Temple · Amitabha Hall interactive guide |
-| `/sitemap.xml` | 站点地图，含首页和上面八条阅读页 |
+| `/sitemap.xml` | 站点地图，含首页、八条核心词页面，以及普拍枋、阑额两条长尾 |
 | `/robots.txt` | 允许抓取，并指向站点地图 |
 
 故事和构件特写仍在建筑页里打开，没有各自的分享地址。阅读页是独立 HTML，正文在首次响应里，并链到 `/#/dayun`。点击左上角“观木”返回首页；建筑页支持浏览器前进、后退与刷新。故事进度只保存在当次会话里。
@@ -95,9 +97,9 @@ pnpm dev
 
 ### 可抓取落地页
 
-八条阅读页的标题和正文写在 [seo/landings.js](./seo/landings.js)。`pnpm build` 时 Vite 插件把它们写成 `dist/<路径>.html`，并写出 `dist/sitemap.xml`、`dist/robots.txt` 和 `dist/seo/landing.css`。开发服务和 `vite preview` 也直接响应这些路径。
+阅读页的标题和正文写在 [seo/landings.js](./seo/landings.js)。首批是八条核心词页面；本周长尾只有 `/pupai-fang` 与 `/lan-e`，不另开第二批核心词。`pnpm build` 时 Vite 插件把它们写成 `dist/<路径>.html`，并写出 `dist/sitemap.xml`、`dist/robots.txt` 和 `dist/seo/landing.css`。开发服务和 `vite preview` 也直接响应这些路径。
 
-`vercel.json` 在通用 SPA 回写之前，把八条干净路径指到对应的 `.html`。带斜杠或带 `.html` 的地址会永久重定向到干净路径。非约束性判断：若只依赖「目录索引先于 `/(.*)` → `/index.html`」，阅读页可能仍落到没有正文的应用壳，所以这里用显式回写，不把这件事留给托管平台的默认顺序。
+`vercel.json` 在通用 SPA 回写之前，把每条阅读页的干净路径指到对应的 `.html`。带斜杠或带 `.html` 的地址会永久重定向到干净路径。非约束性判断：若只依赖「目录索引先于 `/(.*)` → `/index.html`」，阅读页可能仍落到没有正文的应用壳，所以这里用显式回写，不把这件事留给托管平台的默认顺序。
 
 本地核对（先 `pnpm build`，再 `pnpm preview --port 4173`）：
 
