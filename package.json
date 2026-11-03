@@ -6,7 +6,7 @@
   "packageManager": "pnpm@11.25.0",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "vite build",
+    "build": "node seo/check.js && vite build",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": { "three": "^0.180.0" },
