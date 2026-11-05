@@ -53,3 +53,13 @@ body[data-mode=photo] .piece-tools{display:none}
 .photo-marker-card strong{font-size:12px;font-weight:500;color:#5f6657;letter-spacing:1px}
 .photo-marker-card small{font-size:9px;color:#7c8770}
 @media(max-width:480px){.photo-marker-card{max-width:108px}}
+body[data-locale=en] .mode-switch button{letter-spacing:0}
+body[data-locale=en] .info-card h3,body[data-locale=en] .inspector-notes h2,body[data-locale=en] .part-label strong,body[data-locale=en] .photo-marker-card strong{letter-spacing:0}
+body[data-locale=en] .inspector-notes h2{margin-bottom:14px}
+body[data-locale=en] #component-description{margin:12px 0}
+body[data-locale=en] .model-stamp small{max-width:220px;display:block;line-height:1.45;letter-spacing:0}
+body[data-locale=en] .sample-chip,body[data-locale=en] .inspector-neighbors button{align-items:flex-start}
+body[data-locale=en] .sample-chip small,body[data-locale=en] .inspector-neighbors button small{white-space:normal;text-align:right;max-width:58%;line-height:1.35}
+body[data-locale=en] .part-label{max-width:150px}
+body[data-locale=en] .notice{width:auto;max-width:min(420px,calc(100% - 32px));text-align:center}
+@media(max-width:640px){body[data-locale=en] .mode-switch{max-width:min(250px,62vw)}body[data-locale=en] .mode-switch button{white-space:normal;line-height:1.25;text-align:left}}

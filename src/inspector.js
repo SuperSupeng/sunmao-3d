@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { present, roleFor, chrome, findDouLabel, backToName, inspectorCategory, onSampleType, sampleEnglish } from './sample-copy.js';
 
 const roles = {
   roof: '覆盖建筑上部，形成屋顶的遮蔽与轮廓。', frame: '把屋面下的梁、檩、椽组织起来，连接上部屋面与下部支承。',
@@ -49,7 +50,7 @@ export class ComponentInspector {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.35;
     this.renderer.domElement.setAttribute('role', 'img');
-    this.renderer.domElement.setAttribute('aria-label', '居中放大的构件模型，可拖动旋转和滚动缩放');
+    this.renderer.domElement.setAttribute('aria-label', chrome('viewerAria', this.chromeEnglish));
     this.container.append(this.renderer.domElement);
     this.scene = new THREE.Scene(); this.scene.background = new THREE.Color('#eeeee4');
     this.camera = new THREE.PerspectiveCamera(34, 1, 0.01, 100);
@@ -68,16 +69,35 @@ export class ComponentInspector {
       this.frameId = requestAnimationFrame(this.tick);
     };
   }
+  syncChrome(english) {
+    this.chromeEnglish = english;
+    const text = key => chrome(key, english);
+    const close = this.dialog.querySelector('#close-component');
+    this.dialog.querySelector('.inspector-top span').textContent = text('kicker');
+    close.textContent = text('close');
+    close.setAttribute('aria-label', text('closeAria'));
+    this.dialog.querySelector('.inspector-role span').textContent = text('role');
+    this.dialog.querySelector('.inspector-connection span').textContent = text('meets');
+    this.dialog.querySelector('.inspector-model-note').textContent = text('note');
+    this.dialog.querySelector('#component-reset').textContent = text('reset');
+    this.dialog.querySelector('#component-rotate').textContent = text('rotate');
+    this.dialog.querySelector('.inspector-hint').textContent = text('hint');
+    this.dialog.querySelector('#component-zoom-in').setAttribute('aria-label', text('zoomIn'));
+    this.dialog.querySelector('#component-zoom-out').setAttribute('aria-label', text('zoomOut'));
+    this.renderer?.domElement.setAttribute('aria-label', text('viewerAria'));
+  }
   open(item, context = null) {
     const source = this.getObject(item.id);
     if (!source) return;
+    const view = present(item);
     this.opener = document.activeElement;
-    this.dialog.querySelector('#component-title').textContent = item.name;
-    this.dialog.querySelector('#component-category').textContent = item.piece ? `局部示意 · 第 ${String(item.number).padStart(2,'0')} 件` : `${item.en} · 构件观察`;
-    this.dialog.querySelector('#component-role').textContent = roles[item.type || item.id] || item.desc;
-    this.dialog.querySelector('#component-connection').textContent = item.connection;
-    this.dialog.querySelector('#component-description').textContent = item.desc;
-    this.dialog.querySelector('#component-evidence').textContent = item.evidence || '展示教学模型中的代表构件。比例、槽口与榫卯未据实测复原。';
+    this.syncChrome(sampleEnglish() && onSampleType(item));
+    this.dialog.querySelector('#component-title').textContent = view.name;
+    this.dialog.querySelector('#component-category').textContent = inspectorCategory(view);
+    this.dialog.querySelector('#component-role').textContent = roleFor(view.type || view.id, roles[view.type || view.id] || view.desc);
+    this.dialog.querySelector('#component-connection').textContent = view.connection;
+    this.dialog.querySelector('#component-description').textContent = view.desc;
+    this.dialog.querySelector('#component-evidence').textContent = view.evidence || '展示教学模型中的代表构件。比例、槽口与榫卯未据实测复原。';
     this.renderSample(context);
     if (!this.dialog.open) this.dialog.showModal();
     try {
@@ -111,7 +131,7 @@ export class ComponentInspector {
       cancelAnimationFrame(this.frameId); this.tick();
     } catch (error) {
       console.error('Component viewer failed:', error);
-      this.dialog.querySelector('.inspector-hint').textContent = '当前无法显示放大模型，仍可查看右侧的构件说明。';
+      this.dialog.querySelector('.inspector-hint').textContent = chrome('fallbackHint', this.chromeEnglish);
     }
   }
   renderSample(context) {
@@ -125,7 +145,7 @@ export class ComponentInspector {
       labels.innerHTML = '';
     } else {
       marks.hidden = false;
-      marks.innerHTML = `<span>关键部位</span>${context.labels.map(label => `<p><strong>${label.name}</strong>${label.role}${label.caveat ? `<small>${label.caveat}</small>` : ''}</p>`).join('')}`;
+      marks.innerHTML = `<span>${chrome('parts')}</span>${context.labels.map(label => `<p><strong>${label.name}</strong>${label.role}${label.caveat ? `<small>${label.caveat}</small>` : ''}</p>`).join('')}`;
       labels.hidden = false;
       labels.setAttribute('aria-hidden', 'true');
       labels.innerHTML = context.labels.map(label => `<p class="part-label" data-part="${label.id}" data-side="${label.side}"><strong>${label.name}</strong><span>${label.role}</span></p>`).join('');
@@ -137,10 +157,10 @@ export class ComponentInspector {
     }
     const steps = context.neighbors.filter(item => !item.current);
     const chips = steps.map(item => `<button data-neighbor="${item.id}"><strong>${item.name}</strong><small>${item.relation}</small></button>`).join('');
-    const photo = context.home ? '<button data-sample-photo>到实景里找这件斗</button>' : '';
-    const back = context.home ? '' : `<button data-sample-return>回到${context.homeName}</button>`;
+    const photo = context.home ? `<button data-sample-photo>${findDouLabel()}</button>` : '';
+    const back = context.home ? '' : `<button data-sample-return>${backToName(context.homeName)}</button>`;
     neighbors.hidden = false;
-    neighbors.innerHTML = `<span>${context.home ? '相邻构件' : '教学样例'}</span><div>${chips}${photo}${back}</div>`;
+    neighbors.innerHTML = `<span>${context.home ? chrome('neighbors') : chrome('sample')}</span><div>${chips}${photo}${back}</div>`;
   }
   placeAnchors(labels) {
     this.sampleAnchors = null;
