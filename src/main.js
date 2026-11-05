@@ -6,6 +6,12 @@ import { ComponentInspector } from './inspector.js';
 import { StoryTour } from './story.js';
 import { ArchitectureViewer } from './model.js';
 import { layers, hallParts, parts, sources, photos, photoReferences, teachingSample } from './content.js';
+import { isEn, localeUrl, pinLocaleInUrl, leaveEnglish } from './locale.js';
+import {
+  ui, present, sampleView, displayPieceName, startSampleLabel, findDouLabel, backToDouLabel, backToName,
+  inspectAction, mobileLook, extractLabel, neighborNotice, returnedNotice, sampleTag, catalogTitle, catalogHelp,
+  groupCount, groupLabel, expandLabel, pieceCounter, detailModelNote, photoHeading, photoAlt, photoNote, photoSwitch, markerAria,
+} from './sample-copy.js';
 
 const icons = {
   arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
@@ -37,6 +43,7 @@ document.querySelector('#app').innerHTML = `
       <button id="nav-story" class="nav">故事漫游</button>
       <button id="nav-photo" class="nav">实景对照</button>
       <button id="nav-about" class="nav">关于这个尝试</button>
+      ${isEn ? '<button id="locale-zh" class="nav" type="button">中文</button>' : ''}
     </nav>
     <span class="header-note"><span class="status-dot"></span> 古建探索 · 第一辑</span>
   </header>
@@ -45,7 +52,7 @@ document.querySelector('#app').innerHTML = `
     <section class="stage" aria-label="古建筑探索区域">
       <p id="story-scene-caption" class="story-scene-caption" hidden></p>
       <div class="stage-heading"><p class="eyebrow">SHANXI · PINGSHUN <span>山西 · 平顺</span></p><h1>大云院<span>弥陀殿</span></h1><p class="stage-sub">把看见的古建筑，慢慢看懂。</p></div>
-      <div class="mode-switch" role="group" aria-label="观察尺度"><button id="mode-hall" class="selected" aria-pressed="true">${icon('cube')}整殿</button><button id="mode-detail" aria-pressed="false">${icon('layers')}斗拱局部</button></div>
+      <div class="mode-switch" role="group" aria-label="${ui.modeGroup}"><button id="mode-hall" class="selected" aria-pressed="true">${icon('cube')}${ui.modeHall}</button><button id="mode-detail" aria-pressed="false">${icon('layers')}${ui.modeDetail}</button></div>
       <div id="viewer" class="viewer"></div>
       <div id="labels" class="labels" aria-label="模型标注"></div>
       <div id="loading" class="loading"><span class="loading-mark">${logo}</span><p>正在展开这座古建筑…</p></div>
@@ -67,7 +74,7 @@ document.querySelector('#app').innerHTML = `
       <button id="mobile-selection" class="mobile-selection" hidden></button>
       <div class="canvas-hint">${icon('move')}拖动旋转<span>·</span>滚动缩放<span>·</span>点击构件</div>
       <section id="photo-view" class="photo-view" hidden aria-label="建筑实景对照">
-        <div class="photo-switch" role="group" aria-label="实景照片">${Object.entries(photos).map(([id, p]) => `<button data-photo="${id}" class="${id === 'hall' ? 'selected' : ''}" aria-pressed="${id === 'hall'}">${p.title.split(' · ')[0]}</button>`).join('')}</div>
+        <div class="photo-switch" role="group" aria-label="实景照片">${Object.entries(photos).map(([id, p]) => `<button data-photo="${id}" class="${id === 'hall' ? 'selected' : ''}" aria-pressed="${id === 'hall'}">${photoSwitch(id, p)}</button>`).join('')}</div>
         <figure><div class="photo-frame"><img id="reference-photo" src="${photos.hall.src}" alt="${photos.hall.alt}" /><div id="photo-markers" class="photo-markers" hidden></div></div><figcaption><strong id="photo-title">${photos.hall.title}</strong><p id="photo-note">${photos.hall.note}</p><small>摄影：Patrick20242023 · 2024.02.15 · <a id="photo-source" href="${photos.hall.page}" target="_blank" rel="noopener noreferrer">原图</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> · 原图未修改</small></figcaption></figure>
         <button id="back-model" class="back-model">${icon('cube')}返回模型，继续观察 ${icon('arrow')}</button>
       </section>
@@ -103,21 +110,22 @@ let noticeTimer;
 function notify(message) { $('#notice').textContent = message; $('#notice').classList.add('show'); clearTimeout(noticeTimer); noticeTimer = setTimeout(() => $('#notice').classList.remove('show'), 5000); }
 
 function pieceName(id) {
-  return viewer?.pieces.get(id)?.name || '';
+  return displayPieceName(id, viewer?.pieces.get(id)?.name || '');
 }
 function sampleContext(item) {
   if (!item) return null;
+  const sample = sampleView();
   const inStory = document.body.dataset.story === 'active';
-  const isHome = item.id === teachingSample.piece;
-  const neighbor = teachingSample.neighbors.some(entry => entry.id === item.id);
+  const isHome = item.id === sample.piece;
+  const neighbor = sample.neighbors.some(entry => entry.id === item.id);
   if (!isHome && !(neighbor && sampleHome)) return null;
   if (inStory && !isHome) return null;
   return {
     home: isHome,
     guided: !inStory,
-    labels: isHome ? teachingSample.labels : null,
-    homeName: pieceName(teachingSample.piece) || teachingSample.title,
-    neighbors: teachingSample.neighbors.map(entry => ({
+    labels: isHome ? sample.labels : null,
+    homeName: pieceName(sample.piece) || sample.title,
+    neighbors: sample.neighbors.map(entry => ({
       ...entry,
       name: pieceName(entry.id),
       current: entry.id === item.id,
@@ -137,13 +145,14 @@ function renderCatalog() {
   const detail = state.mode === 'detail';
   const selected = getItem(state.selection);
   const groupId = selected?.parent || selected?.type || state.selection;
-  $('#catalog-title').textContent = detail ? '14 件木构 · 逐件认识' : '五个层次 · 展开看构件';
-  $('#catalog-help').innerHTML = detail ? '示意模型件数' : `${icon('eye')}显隐`;
+  $('#catalog-title').textContent = catalogTitle(detail);
+  $('#catalog-help').innerHTML = catalogHelp(detail) || `${icon('eye')}显隐`;
   const eye = item => `<button class="layer-eye" data-visibility="${item.id}" aria-label="${state.hidden.has(item.id) ? '显示' : '隐藏'}${item.name}" aria-pressed="${!state.hidden.has(item.id)}">${icon(state.hidden.has(item.id) ? 'eyeoff' : 'eye')}</button>`;
   $('#layer-list').innerHTML = (detail ? parts : layers).map((item, i) => {
     const children = detail ? [...(viewer?.pieces.values() || [])].filter(p => p.type === item.id) : hallParts.filter(p => p.parent === item.id);
     const opened = state.openGroup === item.id;
-    return `<section class="catalog-group"><div class="layer-row ${groupId === item.id ? 'active' : ''} ${state.hidden.has(item.id) ? 'muted' : ''}" data-layer="${item.id}"><button class="layer-select" data-select="${item.id}" aria-pressed="${state.selection === item.id}"><span class="layer-number">${String(i + 1).padStart(2, '0')}</span><span class="layer-swatch" style="--swatch:${item.color || ['#90664c', '#c3a071', '#a47c50', '#79563c'][i]}"></span><span class="layer-name">${item.name}<small>${children.length ? `${children.length} ${detail ? '件' : '类'}构件 · 点击展开` : item.sub || item.en}</small></span></button>${children.length ? `<button class="catalog-expand" data-expand="${item.id}" aria-label="${opened ? '收起' : '展开'}${item.name}目录" aria-expanded="${opened}">${opened ? '−' : '+'}</button>` : ''}${!detail ? eye(item) : ''}</div>${children.length ? `<div class="member-list" ${opened ? '' : 'hidden'}>${children.map(child => `<div class="member-row ${state.hidden.has(child.id) ? 'muted' : ''}"><button class="member-select ${state.selection === child.id ? 'selected' : ''}" data-select="${child.id}" aria-pressed="${state.selection === child.id}"><span>${detail ? String(child.number).padStart(2, '0') : '└'}</span>${child.name}${child.id === teachingSample.piece ? '<em class="sample-tag">样例</em>' : ''}</button>${!detail ? eye(child) : ''}</div>`).join('')}</div>` : ''}</section>`;
+    const name = groupLabel(detail, item);
+    return `<section class="catalog-group"><div class="layer-row ${groupId === item.id ? 'active' : ''} ${state.hidden.has(item.id) ? 'muted' : ''}" data-layer="${item.id}"><button class="layer-select" data-select="${item.id}" aria-pressed="${state.selection === item.id}"><span class="layer-number">${String(i + 1).padStart(2, '0')}</span><span class="layer-swatch" style="--swatch:${item.color || ['#90664c', '#c3a071', '#a47c50', '#79563c'][i]}"></span><span class="layer-name">${name}<small>${groupCount(detail, children.length, item)}</small></span></button>${children.length ? `<button class="catalog-expand" data-expand="${item.id}" aria-label="${expandLabel(opened, name, detail)}" aria-expanded="${opened}">${opened ? '−' : '+'}</button>` : ''}${!detail ? eye(item) : ''}</div>${children.length ? `<div class="member-list" ${opened ? '' : 'hidden'}>${children.map(child => `<div class="member-row ${state.hidden.has(child.id) ? 'muted' : ''}"><button class="member-select ${state.selection === child.id ? 'selected' : ''}" data-select="${child.id}" aria-pressed="${state.selection === child.id}"><span>${detail ? String(child.number).padStart(2, '0') : '└'}</span>${detail ? displayPieceName(child.id, child.name) : child.name}${child.id === teachingSample.piece ? `<em class="sample-tag">${sampleTag()}</em>` : ''}</button>${!detail ? eye(child) : ''}</div>`).join('')}</div>` : ''}</section>`;
   }).join('');
   $('#layer-list').querySelectorAll('[data-select]').forEach(b => b.addEventListener('click', () => select(b.dataset.select, !layers.some(p => p.id === b.dataset.select))));
   $('#layer-list').querySelectorAll('[data-visibility]').forEach(b => b.addEventListener('click', () => toggleVisibility(b.dataset.visibility)));
@@ -151,13 +160,17 @@ function renderCatalog() {
 }
 function renderInfo() {
   const item = getItem(state.selection);
+  const start = startSampleLabel();
   if (!item) {
-    $('#info-card').innerHTML = `<div class="info-eyebrow">从这里开始 ${icon('compass')}</div><h3>屋顶，如何被托起？</h3><p>选择“按构件”展开，分别看看梁、檩和椽。点开目录，还能继续辨认柱、阑额与普拍枋。</p><button class="text-action" id="enter-detail">走近一组斗拱 ${icon('arrow')}</button><button class="text-action" id="start-sample">从这个斗开始 ${icon('arrow')}</button>`;
+    $('#info-card').innerHTML = `<div class="info-eyebrow">从这里开始 ${icon('compass')}</div><h3>屋顶，如何被托起？</h3><p>选择“按构件”展开，分别看看梁、檩和椽。点开目录，还能继续辨认柱、阑额与普拍枋。</p><button class="text-action" id="enter-detail">走近一组斗拱 ${icon('arrow')}</button><button class="text-action" id="start-sample">${start} ${icon('arrow')}</button>`;
   } else {
-    const samplePiece = item.id === teachingSample.piece;
-    const sampleNeighbor = Boolean(sampleHome) && teachingSample.neighbors.some(entry => entry.id === item.id);
-    const photoButton = item.photo ? (photos[item.photo] ? `<button class="text-action" id="${samplePiece ? 'sample-photo' : 'compare-photo'}">${samplePiece ? '到实景里找这件斗' : '对照实景照片'} ${icon('photo')}</button>` : `<a class="text-action" href="${photoReferences[item.photo].page}" target="_blank" rel="noopener noreferrer">查阅${photoReferences[item.photo].title} ↗</a>`) : '';
-    $('#info-card').innerHTML = `<div class="info-eyebrow">${item.en}<span>${item.piece ? `第 ${String(item.number).padStart(2, '0')} 件 / 共 14 件` : '构件笔记'}</span></div><h3>${item.name}</h3><p>${item.desc}</p><div class="connection">${icon('layers')}<span>${item.connection}</span></div>${item.tip ? `<p class="info-tip">${item.tip}</p>` : ''}${sampleCard(samplePiece, sampleNeighbor)}${item.id === 'dougong' ? `<button class="text-action" id="enter-detail">逐件拆开这一组斗拱 ${icon('arrow')}</button><button class="text-action" id="start-sample">从这个斗开始 ${icon('arrow')}</button>` : ''}${photoButton}<button class="text-action" id="inspect-component">放大观察 · 看作用 ${icon('cube')}</button><small class="evidence">${item.evidence || (item.piece || parts.some(p => p.id === item.id) ? '通用教学模型 · 14 件为本示意件数，非实物构件清单；槽口未据实测复原。' : '构件方向与组合关系示意 · 数量、尺寸与排布未据实测复原。')}</small>`;
+    const view = present(item);
+    const sample = sampleView();
+    const samplePiece = item.id === sample.piece;
+    const sampleNeighbor = Boolean(sampleHome) && sample.neighbors.some(entry => entry.id === item.id);
+    const photoButton = item.photo ? (photos[item.photo] ? `<button class="text-action" id="${samplePiece ? 'sample-photo' : 'compare-photo'}">${samplePiece ? findDouLabel() : '对照实景照片'} ${icon('photo')}</button>` : `<a class="text-action" href="${photoReferences[item.photo].page}" target="_blank" rel="noopener noreferrer">查阅${photoReferences[item.photo].title} ↗</a>`) : '';
+    const evidence = view.evidence || (item.piece || parts.some(p => p.id === item.id) ? '通用教学模型 · 14 件为本示意件数，非实物构件清单；槽口未据实测复原。' : '构件方向与组合关系示意 · 数量、尺寸与排布未据实测复原。');
+    $('#info-card').innerHTML = `<div class="info-eyebrow">${item.en}<span>${pieceCounter(view)}</span></div><h3>${view.name}</h3><p>${view.desc}</p><div class="connection">${icon('layers')}<span>${view.connection}</span></div>${item.tip ? `<p class="info-tip">${item.tip}</p>` : ''}${sampleCard(samplePiece, sampleNeighbor)}${item.id === 'dougong' ? `<button class="text-action" id="enter-detail">逐件拆开这一组斗拱 ${icon('arrow')}</button><button class="text-action" id="start-sample">${start} ${icon('arrow')}</button>` : ''}${photoButton}<button class="text-action" id="inspect-component">${inspectAction(item)} ${icon('cube')}</button><small class="evidence">${evidence}</small>`;
   }
   $('#inspect-component')?.addEventListener('click', () => inspectSelected());
   $('#enter-detail')?.addEventListener('click', () => changeMode('detail'));
@@ -169,24 +182,26 @@ function renderInfo() {
 }
 function sampleCard(samplePiece, sampleNeighbor) {
   if (document.body.dataset.story === 'active') return '';
+  const sample = sampleView();
   if (samplePiece) {
-    const chips = teachingSample.neighbors.map(entry => `<button class="sample-chip" data-neighbor="${entry.id}">${pieceName(entry.id)}<small>${entry.relation}</small></button>`).join('');
-    return `<div class="sample-path"><p class="sample-kicker">${teachingSample.kicker} · ${teachingSample.title}</p><p>${teachingSample.blurb}</p><div class="sample-chips">${chips}</div></div>`;
+    const chips = sample.neighbors.map(entry => `<button class="sample-chip" data-neighbor="${entry.id}">${pieceName(entry.id)}<small>${entry.relation}</small></button>`).join('');
+    return `<div class="sample-path"><p class="sample-kicker">${sample.kicker} · ${sample.title}</p><p>${sample.blurb}</p><div class="sample-chips">${chips}</div></div>`;
   }
-  if (sampleNeighbor) return `<button class="text-action" id="return-sample">回到${pieceName(teachingSample.piece) || teachingSample.title} ${icon('reset')}</button>`;
+  if (sampleNeighbor) return `<button class="text-action" id="return-sample">${backToName(pieceName(sample.piece) || sample.title)} ${icon('reset')}</button>`;
   return '';
 }
 function updateSelectionTools() {
   const item = getItem(state.selection);
+  const view = present(item);
   const isPiece = state.mode === 'detail' && item?.piece;
   $('#piece-tools').hidden = !isPiece;
   if (isPiece) {
-    $('#piece-note').textContent = `${String(item.number).padStart(2, '0')} · ${item.name} ⓘ`;
-    $('#extract-piece').textContent = state.extracted ? '放回原位 ↙' : '抽出观察 ↗';
+    $('#piece-note').textContent = `${String(item.number).padStart(2, '0')} · ${view.name} ⓘ`;
+    $('#extract-piece').textContent = extractLabel(state.extracted, item);
     $('#extract-piece').setAttribute('aria-pressed', state.extracted);
   }
   $('#mobile-selection').hidden = !item || isPiece;
-  if (item) $('#mobile-selection').innerHTML = `<strong>${item.name}</strong><span>放大看作用 ↗</span>`;
+  if (item) $('#mobile-selection').innerHTML = `<strong>${view.name}</strong><span>${mobileLook(item)} ↗</span>`;
 }
 function select(id, inspect = false) {
   state.selection = id; state.extracted = false;
@@ -208,7 +223,7 @@ function toggleVisibility(id) {
 }
 function buildLabels() {
   const labels = state.mode === 'detail' ? (getItem(state.selection)?.piece ? [getItem(state.selection)] : ['piece-2', 'piece-3', 'piece-1'].map(getItem).filter(Boolean)) : (getItem(state.selection)?.parent ? [getItem(state.selection)] : layers.filter(p => ['roof', 'dougong', 'columns'].includes(p.id)));
-  $('#labels').innerHTML = labels.map(p => `<button class="model-label" data-label="${p.id}"><span></span>${p.name}</button>`).join('');
+  $('#labels').innerHTML = labels.map(p => `<button class="model-label" data-label="${p.id}"><span></span>${displayPieceName(p.id, p.name)}</button>`).join('');
   $('#labels').querySelectorAll('button').forEach(b => b.addEventListener('click', () => select(b.dataset.label, true)));
 }
 function syncModeChrome(mode) {
@@ -225,7 +240,7 @@ function syncModeChrome(mode) {
   $('#mode-detail').setAttribute('aria-pressed', mode === 'detail');
   $('#photo-view').hidden = mode !== 'photo';
   $('#viewer').style.visibility = mode === 'photo' ? 'hidden' : 'visible';
-  $('#model-note').textContent = mode === 'detail' ? '通用斗拱关系示意 / 非实测复原' : '教学示意 / 非测绘复原';
+  $('#model-note').textContent = mode === 'detail' ? detailModelNote() : '教学示意 / 非测绘复原';
   $('#explode-label').textContent = mode === 'detail' ? '构件展开' : '结构展开';
   $('#range-middle').textContent = mode === 'detail' ? '逐件辨认' : '显露木构';
   $('#range-start').textContent = mode === 'detail' ? '合拢构件' : '完整建筑';
@@ -233,7 +248,7 @@ function syncModeChrome(mode) {
   if (mode === 'photo') showPhoto(state.photo);
 }
 function changeMode(mode) {
-  if (!viewer && mode !== 'photo') { notify('当前设备暂不支持 3D，请先查看实景和构件说明。'); return; }
+  if (!viewer && mode !== 'photo') { notify(ui.no3d); return; }
   stopAnimation();
   const was = state.mode; state.mode = mode;
   state.extracted = false; viewer?.extract(null);
@@ -247,7 +262,7 @@ function changeMode(mode) {
   updateSelectionTools();
 }
 function startSample() {
-  if (!viewer) { notify('当前设备暂不支持 3D，请先查看实景和构件说明。'); return; }
+  if (!viewer) { notify(ui.no3d); return; }
   awayFromSample = false;
   sampleHome = null;
   if (state.mode !== 'detail') changeMode('detail');
@@ -266,11 +281,12 @@ function viewNeighbor(id) {
   if (state.explode < 15) setExplode(40);
   select(id, inspector.dialog.open);
   viewer.focusPiece(id);
-  notify(`相邻构件 · ${pieceName(id)}`);
+  notify(neighborNotice(pieceName(id)));
 }
 function returnToSample() {
   if (!viewer) return;
-  const home = sampleHome || { mode: 'detail', explode: state.explode, selection: teachingSample.piece, camera: viewer.captureView() };
+  const sample = sampleView();
+  const home = sampleHome || { mode: 'detail', explode: state.explode, selection: sample.piece, camera: viewer.captureView() };
   const reopen = inspector.dialog.open;
   stopAnimation();
   state.sampleMarker = false;
@@ -283,7 +299,7 @@ function returnToSample() {
   if (home.camera) viewer.restoreView(home.camera);
   syncModeChrome(home.mode);
   select(home.selection, reopen);
-  notify(`已回到${pieceName(home.selection) || teachingSample.title}`);
+  notify(returnedNotice(pieceName(home.selection) || sample.title));
   if (!reopen) $('#inspect-component')?.focus({ preventScroll: true });
 }
 function openSamplePhoto() {
@@ -323,18 +339,24 @@ function showPhoto(id) {
   state.photo = id; const p = photos[id];
   const marked = state.sampleMarker && id === teachingSample.photo && document.body.dataset.story !== 'active';
   const sampleReturn = state.sampleMarker && sampleHome && document.body.dataset.story !== 'active';
-  $('#reference-photo').src = p.src; $('#reference-photo').alt = p.alt;
-  $('#photo-title').textContent = p.title;
-  $('#photo-note').textContent = marked ? teachingSample.marker.note : p.note;
+  const sample = sampleView();
+  $('#reference-photo').src = p.src; $('#reference-photo').alt = photoAlt(id, p);
+  $('#photo-title').textContent = photoHeading(id, p);
+  $('#photo-note').textContent = marked ? sample.marker.note : photoNote(id, p);
   $('#photo-source').href = p.page;
   const markers = $('#photo-markers');
   markers.hidden = !marked;
   if (marked) {
-    const marker = teachingSample.marker;
-    markers.innerHTML = `<div class="photo-marker" style="left:${marker.x}%;top:${marker.y}%" role="img" aria-label="${marker.name}，${marker.role}。教学观察点，不是实测定位。"><span class="photo-marker-dot"></span><span class="photo-marker-card"><strong>${marker.name}</strong><small>${marker.role}</small></span></div>`;
+    const marker = sample.marker;
+    markers.innerHTML = `<div class="photo-marker" style="left:${marker.x}%;top:${marker.y}%" role="img" aria-label="${markerAria(marker)}"><span class="photo-marker-dot"></span><span class="photo-marker-card"><strong>${marker.name}</strong><small>${marker.role}</small></span></div>`;
   }
-  $('#back-model').innerHTML = sampleReturn ? `${icon('cube')}回到这件斗 ${icon('arrow')}` : `${icon('cube')}返回模型，继续观察 ${icon('arrow')}`;
-  document.querySelectorAll('[data-photo]').forEach(b => { b.classList.toggle('selected', b.dataset.photo === id); b.setAttribute('aria-pressed', b.dataset.photo === id); });
+  $('#back-model').innerHTML = sampleReturn ? `${icon('cube')}${backToDouLabel()} ${icon('arrow')}` : `${icon('cube')}返回模型，继续观察 ${icon('arrow')}`;
+  document.querySelectorAll('[data-photo]').forEach(b => {
+    b.classList.toggle('selected', b.dataset.photo === id);
+    b.setAttribute('aria-pressed', b.dataset.photo === id);
+    const photo = photos[b.dataset.photo];
+    if (photo) b.textContent = photoSwitch(b.dataset.photo, photo);
+  });
 }
 function toggleExtract() {
   if (!viewer) return;
@@ -436,8 +458,8 @@ function showPage(next, push = true, startStory = false) {
   $('#home-view').hidden = !isHome; $('#building-view').hidden = isHome;
   document.body.dataset.route = next;
   $('#edition-note').textContent = isHome ? 'GUANMU / ARCHITECTURE STORIES' : 'DAYUN TEMPLE / VOL. 01';
-  document.title = isHome ? '观木 · 从一次仰望开始' : '观木 · 大云院弥陀殿';
-  if (push) history.pushState({ page: next }, '', isHome ? location.pathname + location.search : '#/dayun');
+  document.title = isHome ? '观木 · 从一次仰望开始' : ui.buildingTitle;
+  if (push) history.pushState({ page: next }, '', isHome ? localeUrl('') : localeUrl('#/dayun'));
   if (viewer) {
     if (isHome) viewer.paused = true;
     else { viewer.setMode(state.mode); requestAnimationFrame(() => { viewer.resize(); viewer.reset(false); }); }
@@ -451,6 +473,12 @@ $('#nav-approach').addEventListener('click', () => $('#home-approach').scrollInt
 $('#home-view').querySelectorAll('[data-enter]').forEach(b => b.addEventListener('click', () => showPage('building')));
 $('#home-view').querySelectorAll('[data-story]').forEach(b => b.addEventListener('click', () => showPage('building', true, true)));
 window.addEventListener('popstate', () => showPage(location.hash.startsWith('#/dayun') ? 'building' : 'home', false));
+if (isEn) {
+  document.documentElement.lang = 'en';
+  document.body.dataset.locale = 'en';
+}
+$('#locale-zh')?.addEventListener('click', leaveEnglish);
+pinLocaleInUrl();
 showPage(location.hash.startsWith('#/dayun') ? 'building' : 'home', false);
 
 renderCatalog(); renderInfo(); buildLabels();
@@ -472,7 +500,7 @@ requestAnimationFrame(() => {
   } catch (error) {
     console.error('3D initialization failed:', error);
     $('#loading').hidden = true; changeMode('photo');
-    notify('当前设备无法启动 3D，可以先浏览实景照片和构件说明。');
+    notify(ui.no3dFail);
     document.body.dataset.ready = 'fallback';
     document.querySelectorAll('#mode-hall, #mode-detail, #nav-model, #back-model, #start-guide, #nav-story, #enter-detail').forEach(b => b.disabled = true);
   }

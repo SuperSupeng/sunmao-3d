@@ -44,7 +44,13 @@ export function assertSeo() {
     const leadAt = html.indexOf('class="lead"');
     if (h1At < 0 || leadAt < h1At) fail(`lead is not after h1: ${page.path}`);
     if (!html.includes(`<link rel="canonical" href="${SITE}${page.path}" />`)) fail(`canonical link: ${page.path}`);
-    if (!html.includes('href="/#/dayun"')) fail(`interactive link: ${page.path}`);
+    const modelLink = page.lang === 'en' ? 'href="/?lang=en#/dayun"' : 'href="/#/dayun"';
+    if (!html.includes(modelLink)) fail(`interactive link: ${page.path}`);
+    if (page.lang === 'en' && html.includes('href="/#/dayun"')) fail(`english page links to the Chinese-only model: ${page.path}`);
+    if (page.lang === 'en' && /The 3D (labels|screen) (are|is) in Chinese/.test(html)) fail(`english page still says the model is Chinese-only: ${page.path}`);
+    if (page.path === '/en/dougong' && !html.includes('Dougong close-up')) fail('dougong page missing English click path');
+    if (page.path === '/en/dougong' && !html.includes('Start from this dou')) fail('dougong page missing start label');
+    if (page.path === '/en/dougong' && !html.includes('Bottom large dou')) fail('dougong page missing sample title');
     if (page.lang === 'zh-CN' && !html.includes('测绘复原')) fail(`missing teaching caveat: ${page.path}`);
     if (page.lang === 'en' && !html.includes('not a measured')) fail(`missing teaching caveat: ${page.path}`);
     if (page.lang === 'en' && !html.includes('English path you can finish')) fail(`missing English path: ${page.path}`);

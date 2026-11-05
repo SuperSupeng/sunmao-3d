@@ -270,7 +270,7 @@ export const pages = [
     title: 'What is dougong · learn from a Chinese wooden hall',
     eyebrow: 'Term · bracket set',
     lead: 'Dougong (斗栱) is the stacked wooden bracket set between a column top and the eaves. Learn it from one piece: the large bearing block at the bottom. Then see how that block meets the flat tie under it and the bracket arm above it. The close-up is a teaching model, not a measured restoration.',
-    cta: { href: '/#/dayun', label: 'Open the model and start from the bottom dou' },
+    cta: { href: '/?lang=en#/dayun', label: 'Open the model and start from the bottom dou' },
     langSwitch: { href: '/dougong', label: '中文' },
     alternates: [
       { hreflang: 'zh-CN', href: '/dougong' },
@@ -282,7 +282,7 @@ export const pages = [
       {
         heading: 'Four pieces, in looking order',
         paragraphs: [
-          'The Chinese pages and the search term use 斗栱. The buttons inside the 3D app use 斗拱. Both names point at this same set.',
+          'Chinese pages and the search term use 斗栱. In the English model the same control is Dougong close-up. The Chinese model still says 斗拱. Both names are this set.',
         ],
         items: [
           'Dou (斗), bearing block. The sample starts at the large block at the bottom. The notch on the model only says “this meets a long wooden arm.” The real joint is not reconstructed from a survey.',
@@ -292,15 +292,15 @@ export const pages = [
         ],
       },
       {
-        heading: 'Where to click in the Chinese interface',
+        heading: 'Where to click',
         paragraphs: [
-          'The 3D labels are in Chinese. This page is the English explanation; the model is the same sample.',
+          'Open the model in English. The steps are the same as on the Chinese page.',
         ],
         items: [
-          'Open [#/dayun](/#/dayun).',
-          'Switch the view to 斗拱局部 (bracket close-up).',
-          'Choose 从这个斗开始 (“start from this dou”). The sample title is 底部大斗.',
-          'You can select the neighboring pupaifang and gong, return to the dou, then open the column-top photograph.',
+          'Open [?lang=en#/dayun](/?lang=en#/dayun).',
+          'Switch the view to Dougong close-up.',
+          'Choose Start from this dou. The sample title is Bottom large dou.',
+          'Select the neighboring pupaifang and the lower gong, return to the dou, then open the column-top photograph.',
         ],
       },
       {
@@ -318,7 +318,7 @@ export const pages = [
     title: 'Chinese wooden architecture · a walkthrough of Dayun Temple',
     eyebrow: 'Intro · one hall',
     lead: 'Chinese wooden architecture is easier to start as a stack of layers: roof, timber frame, bracket sets, columns and ties, and the platform. This page uses one hall, the Amitabha Hall at Dayun Temple, to name those layers. The model shows positions for learning. It is not a measured drawing.',
-    cta: { href: '/#/dayun', label: 'Open the Dayun Temple model' },
+    cta: { href: '/?lang=en#/dayun', label: 'Open the Dayun Temple model' },
     langSwitch: { href: '/components', label: '中文' },
     figure: hallFigureEn,
     sections: [
@@ -357,7 +357,7 @@ export const pages = [
     title: 'Dayun Temple · Amitabha Hall interactive guide',
     eyebrow: 'Shanxi · Pingshun · Shihui village',
     lead: 'Dayun Temple (大云院) is in Shihui village, Pingshun County, Shanxi. This guide stays with one building there, the Amitabha Hall (弥陀殿): what to look at first, which wooden pieces the walkthrough names, and how to open the interactive model. The model is a teaching sketch, not a measured reconstruction.',
-    cta: { href: '/#/dayun', label: 'Open the Amitabha Hall model' },
+    cta: { href: '/?lang=en#/dayun', label: 'Open the Amitabha Hall model' },
     langSwitch: { href: '/dayun', label: '中文' },
     figure: hallFigureEn,
     sections: [
@@ -384,7 +384,7 @@ export const pages = [
       {
         heading: 'Opening the model',
         paragraphs: [
-          'The 3D screen is in Chinese. Start at [#/dayun](/#/dayun). 整殿 is the whole hall, 斗拱局部 is the bracket close-up, and 从这个斗开始 starts the bottom-dou sample. You can finish the English reading on this site without the model: [what dougong is](/en/dougong), then [the layer walkthrough](/en/chinese-wooden-architecture), then the five steps above.',
+          'Open [?lang=en#/dayun](/?lang=en#/dayun). Whole hall is the full building, Dougong close-up is the bracket close-up, and Start from this dou opens the bottom large dou. You can also finish the English reading on this site without the model: [what dougong is](/en/dougong), then [the layer walkthrough](/en/chinese-wooden-architecture), then the five steps above.',
         ],
       },
       {
@@ -477,7 +477,7 @@ const enPath = [
   { href: '/en/dougong', label: 'What dougong is' },
   { href: '/en/chinese-wooden-architecture', label: 'Read one hall as layers' },
   { href: '/en/dayun-temple', label: 'Walk Dayun Temple’s Amitabha Hall' },
-  { href: '/#/dayun', label: 'Open the interactive model (Chinese labels)' },
+  { href: '/?lang=en#/dayun', label: 'Open the interactive model' },
 ];
 
 function escapeHtml(value) {
@@ -544,12 +544,13 @@ function renderFooter(page) {
   const label = page.lang === 'en' ? 'All reading pages' : '全部阅读页';
   const home = page.lang === 'en' ? 'Guanmu home' : '观木首页';
   const enter = page.lang === 'en' ? 'Interactive model' : '交互探索';
+  const modelHref = page.lang === 'en' ? '/?lang=en#/dayun' : '/#/dayun';
   const map = page.lang === 'en' ? 'Sitemap' : '站点地图';
   const links = pages.map(item => {
     const current = item.path === page.path ? ' aria-current="page"' : '';
     return `<li><a href="${item.path}"${current}>${escapeHtml(item.title)}</a></li>`;
   }).join('');
-  return `<footer><nav aria-label="${label}"><p>${label}</p><ul>${links}</ul></nav><p class="footer-meta"><a href="/">${home}</a> · <a href="/#/dayun">${enter}</a> · <a href="/sitemap.xml">${map}</a></p><p class="footer-meta">观木 · 从一次仰望，到一次理解。</p></footer>`;
+  return `<footer><nav aria-label="${label}"><p>${label}</p><ul>${links}</ul></nav><p class="footer-meta"><a href="/">${home}</a> · <a href="${modelHref}">${enter}</a> · <a href="/sitemap.xml">${map}</a></p><p class="footer-meta">观木 · 从一次仰望，到一次理解。</p></footer>`;
 }
 
 export function renderPage(page) {
@@ -557,6 +558,7 @@ export function renderPage(page) {
   const skip = page.lang === 'en' ? 'Skip to content' : '跳到正文';
   const brandNote = page.lang === 'en' ? 'Reading page' : '阅读页';
   const enter = page.lang === 'en' ? 'Interactive model' : '交互探索';
+  const modelHref = page.lang === 'en' ? '/?lang=en#/dayun' : '/#/dayun';
   return `<!doctype html>
 <html lang="${page.lang}">
 <head>
@@ -577,7 +579,7 @@ export function renderPage(page) {
     <a class="brand" href="/">观木</a>
     <p class="brand-note">${brandNote}</p>
     <nav class="header-nav" aria-label="${page.lang === 'en' ? 'Page' : '本页'}">
-      <a href="/#/dayun">${enter}</a>
+      <a href="${modelHref}">${enter}</a>
       ${page.langSwitch ? `<a href="${escapeHtml(page.langSwitch.href)}" hreflang="${page.lang === 'en' ? 'zh-CN' : 'en'}">${escapeHtml(page.langSwitch.label)}</a>` : ''}
     </nav>
   </header>
