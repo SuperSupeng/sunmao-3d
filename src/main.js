@@ -6,7 +6,9 @@ import { ComponentInspector } from './inspector.js';
 import { StoryTour } from './story.js';
 import { ArchitectureViewer } from './model.js';
 import { layers, hallParts, parts, sources, photos, photoReferences, teachingSample } from './content.js';
-import { isEn, localeUrl, pinLocaleInUrl, leaveEnglish } from './locale.js';
+import { inject } from '@vercel/analytics';
+import { isEn, locale, localeUrl, pinLocaleInUrl, leaveEnglish } from './locale.js';
+import { capture, initAnalytics, pagePath } from './analytics.js';
 import {
   ui, present, sampleView, displayPieceName, startSampleLabel, findDouLabel, backToDouLabel, backToName,
   inspectAction, mobileLook, extractLabel, neighborNotice, returnedNotice, sampleTag, catalogTitle, catalogHelp,
@@ -154,7 +156,7 @@ function renderCatalog() {
     const name = groupLabel(detail, item);
     return `<section class="catalog-group"><div class="layer-row ${groupId === item.id ? 'active' : ''} ${state.hidden.has(item.id) ? 'muted' : ''}" data-layer="${item.id}"><button class="layer-select" data-select="${item.id}" aria-pressed="${state.selection === item.id}"><span class="layer-number">${String(i + 1).padStart(2, '0')}</span><span class="layer-swatch" style="--swatch:${item.color || ['#90664c', '#c3a071', '#a47c50', '#79563c'][i]}"></span><span class="layer-name">${name}<small>${groupCount(detail, children.length, item)}</small></span></button>${children.length ? `<button class="catalog-expand" data-expand="${item.id}" aria-label="${expandLabel(opened, name, detail)}" aria-expanded="${opened}">${opened ? '−' : '+'}</button>` : ''}${!detail ? eye(item) : ''}</div>${children.length ? `<div class="member-list" ${opened ? '' : 'hidden'}>${children.map(child => `<div class="member-row ${state.hidden.has(child.id) ? 'muted' : ''}"><button class="member-select ${state.selection === child.id ? 'selected' : ''}" data-select="${child.id}" aria-pressed="${state.selection === child.id}"><span>${detail ? String(child.number).padStart(2, '0') : '└'}</span>${detail ? displayPieceName(child.id, child.name) : child.name}${child.id === teachingSample.piece ? `<em class="sample-tag">${sampleTag()}</em>` : ''}</button>${!detail ? eye(child) : ''}</div>`).join('')}</div>` : ''}</section>`;
   }).join('');
-  $('#layer-list').querySelectorAll('[data-select]').forEach(b => b.addEventListener('click', () => select(b.dataset.select, !layers.some(p => p.id === b.dataset.select))));
+  $('#layer-list').querySelectorAll('[data-select]').forEach(b => b.addEventListener('click', () => select(b.dataset.select, !layers.some(p => p.id === b.dataset.select), true)));
   $('#layer-list').querySelectorAll('[data-visibility]').forEach(b => b.addEventListener('click', () => toggleVisibility(b.dataset.visibility)));
   $('#layer-list').querySelectorAll('[data-expand]').forEach(b => b.addEventListener('click', () => { state.openGroup = state.openGroup === b.dataset.expand ? null : b.dataset.expand; renderCatalog(); }));
 }
@@ -173,12 +175,22 @@ function renderInfo() {
     $('#info-card').innerHTML = `<div class="info-eyebrow">${item.en}<span>${pieceCounter(view)}</span></div><h3>${view.name}</h3><p>${view.desc}</p><div class="connection">${icon('layers')}<span>${view.connection}</span></div>${item.tip ? `<p class="info-tip">${item.tip}</p>` : ''}${sampleCard(samplePiece, sampleNeighbor)}${item.id === 'dougong' ? `<button class="text-action" id="enter-detail">逐件拆开这一组斗拱 ${icon('arrow')}</button><button class="text-action" id="start-sample">${start} ${icon('arrow')}</button>` : ''}${photoButton}<button class="text-action" id="inspect-component">${inspectAction(item)} ${icon('cube')}</button><small class="evidence">${evidence}</small>`;
   }
   $('#inspect-component')?.addEventListener('click', () => inspectSelected());
-  $('#enter-detail')?.addEventListener('click', () => changeMode('detail'));
+  $('#enter-detail')?.addEventListener('click', () => {
+    const from = state.mode;
+    changeMode('detail');
+    trackViewMode(from, 'detail');
+  });
   $('#start-sample')?.addEventListener('click', startSample);
   $('#sample-photo')?.addEventListener('click', openSamplePhoto);
   $('#return-sample')?.addEventListener('click', returnToSample);
   $('#info-card').querySelectorAll('[data-neighbor]').forEach(button => button.addEventListener('click', () => viewNeighbor(button.dataset.neighbor)));
-  $('#compare-photo')?.addEventListener('click', () => { state.sampleMarker = false; state.photo = item.photo; changeMode('photo'); $('.stage').scrollIntoView({ behavior: state.reduced ? 'instant' : 'smooth' }); });
+  $('#compare-photo')?.addEventListener('click', () => {
+    state.sampleMarker = false;
+    state.photo = item.photo;
+    capture('photo_compare_opened', { photo: item.photo, source: 'component', component_id: item.id, component_name: present(item).name, lang: locale, path: pagePath() });
+    changeMode('photo');
+    $('.stage').scrollIntoView({ behavior: state.reduced ? 'instant' : 'smooth' });
+  });
 }
 function sampleCard(samplePiece, sampleNeighbor) {
   if (document.body.dataset.story === 'active') return '';
@@ -203,7 +215,7 @@ function updateSelectionTools() {
   $('#mobile-selection').hidden = !item || isPiece;
   if (item) $('#mobile-selection').innerHTML = `<strong>${view.name}</strong><span>${mobileLook(item)} ↗</span>`;
 }
-function select(id, inspect = false) {
+function select(id, inspect = false, track = false) {
   state.selection = id; state.extracted = false;
   const item = getItem(id);
   state.openGroup = item?.parent || item?.type || id;
@@ -213,6 +225,16 @@ function select(id, inspect = false) {
   viewer?.select(id);
   renderCatalog(); renderInfo(); buildLabels(); updateSelectionTools();
   tour?.record('select', item?.type || id);
+  if (track && item) {
+    const view = present(item);
+    capture('component_selected', {
+      component_id: id,
+      component_name: view?.name || item.name || '',
+      component_type: item.type || item.id,
+      lang: locale,
+      path: pagePath(),
+    });
+  }
   if (inspect && item) inspector.open(item, sampleContext(item));
 }
 function toggleVisibility(id) {
@@ -224,7 +246,7 @@ function toggleVisibility(id) {
 function buildLabels() {
   const labels = state.mode === 'detail' ? (getItem(state.selection)?.piece ? [getItem(state.selection)] : ['piece-2', 'piece-3', 'piece-1'].map(getItem).filter(Boolean)) : (getItem(state.selection)?.parent ? [getItem(state.selection)] : layers.filter(p => ['roof', 'dougong', 'columns'].includes(p.id)));
   $('#labels').innerHTML = labels.map(p => `<button class="model-label" data-label="${p.id}"><span></span>${displayPieceName(p.id, p.name)}</button>`).join('');
-  $('#labels').querySelectorAll('button').forEach(b => b.addEventListener('click', () => select(b.dataset.label, true)));
+  $('#labels').querySelectorAll('button').forEach(b => b.addEventListener('click', () => select(b.dataset.label, true, true)));
 }
 function syncModeChrome(mode) {
   document.body.dataset.mode = mode;
@@ -263,6 +285,13 @@ function changeMode(mode) {
 }
 function startSample() {
   if (!viewer) { notify(ui.no3d); return; }
+  const samplePiece = getItem(teachingSample.piece);
+  capture('sample_start_from_dou', {
+    component_id: teachingSample.piece,
+    component_name: (samplePiece && present(samplePiece).name) || teachingSample.title,
+    lang: locale,
+    path: pagePath(),
+  });
   awayFromSample = false;
   sampleHome = null;
   if (state.mode !== 'detail') changeMode('detail');
@@ -279,7 +308,7 @@ function viewNeighbor(id) {
   freezeSampleHome();
   awayFromSample = true;
   if (state.explode < 15) setExplode(40);
-  select(id, inspector.dialog.open);
+  select(id, inspector.dialog.open, true);
   viewer.focusPiece(id);
   notify(neighborNotice(pieceName(id)));
 }
@@ -307,6 +336,14 @@ function openSamplePhoto() {
   awayFromSample = true;
   state.sampleMarker = true;
   state.photo = teachingSample.photo;
+  capture('photo_compare_opened', {
+    photo: state.photo,
+    source: 'sample',
+    component_id: state.selection || teachingSample.piece,
+    component_name: pieceName(teachingSample.piece) || teachingSample.title,
+    lang: locale,
+    path: pagePath(),
+  });
   if (inspector.dialog.open) inspector.dialog.close();
   changeMode('photo');
   $('.stage').scrollIntoView({ behavior: state.reduced ? 'instant' : 'smooth' });
@@ -366,9 +403,20 @@ function toggleExtract() {
   updateSelectionTools();
   tour?.record('extract', { id: state.selection, extracted: state.extracted });
 }
-function manualMode(mode) {
+function trackViewMode(from, mode) {
+  if ((mode !== 'hall' && mode !== 'detail') || from === mode || state.mode !== mode) return;
+  capture('view_mode_toggled', {
+    view: mode === 'detail' ? 'dougong' : 'hall',
+    from: from === 'detail' ? 'dougong' : from === 'hall' ? 'hall' : from,
+    lang: locale,
+    path: pagePath(),
+  });
+}
+function manualMode(mode, trackView = false) {
+  const from = state.mode;
   if (tour?.active) tour.close();
   changeMode(mode);
+  if (trackView) trackViewMode(from, mode);
 }
 
 document.querySelectorAll('[data-fine]').forEach(b => b.addEventListener('click', () => {
@@ -378,10 +426,15 @@ document.querySelectorAll('[data-fine]').forEach(b => b.addEventListener('click'
 }));
 $('#extract-piece').addEventListener('click', toggleExtract);
 $('#piece-note').addEventListener('click', inspectSelected);
-$('#mode-hall').addEventListener('click', () => manualMode('hall'));
-$('#mode-detail').addEventListener('click', () => manualMode('detail'));
+$('#mode-hall').addEventListener('click', () => manualMode('hall', true));
+$('#mode-detail').addEventListener('click', () => manualMode('detail', true));
 $('#nav-model').addEventListener('click', () => manualMode('hall'));
-$('#nav-photo').addEventListener('click', () => { state.photo = state.mode === 'detail' ? 'dougong' : 'hall'; manualMode('photo'); });
+$('#nav-photo').addEventListener('click', () => {
+  const photo = state.mode === 'detail' ? 'dougong' : 'hall';
+  state.photo = photo;
+  capture('photo_compare_opened', { photo, source: 'nav', lang: locale, path: pagePath() });
+  manualMode('photo');
+});
 $('#back-model').addEventListener('click', () => { if (state.sampleMarker && sampleHome) returnToSample(); else changeMode(state.photo === 'dougong' ? 'detail' : 'hall'); });
 $('#explode').addEventListener('input', e => { stopAnimation(); setExplode(Number(e.target.value)); });
 $('#assemble').addEventListener('click', () => state.animation ? stopAnimation() : animateExplode(state.explode > 50 ? 0 : 100));
@@ -477,14 +530,19 @@ if (isEn) {
   document.documentElement.lang = 'en';
   document.body.dataset.locale = 'en';
 }
-$('#locale-zh')?.addEventListener('click', leaveEnglish);
+$('#locale-zh')?.addEventListener('click', () => {
+  capture('lang_switched', { lang: 'zh', from: locale, path: pagePath() }, { send_instantly: true, transport: 'sendBeacon' });
+  leaveEnglish();
+});
 pinLocaleInUrl();
 showPage(location.hash.startsWith('#/dayun') ? 'building' : 'home', false);
+inject();
+initAnalytics();
 
 renderCatalog(); renderInfo(); buildLabels();
 requestAnimationFrame(() => {
   try {
-    viewer = new ArchitectureViewer($('#viewer'), id => select(id, true), notify);
+    viewer = new ArchitectureViewer($('#viewer'), id => select(id, true, true), notify);
     viewer.onFrame = labels => {
       for (const item of labels) {
         const el = $(`[data-label="${item.id}"]`);

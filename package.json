@@ -9,6 +9,12 @@
     "build": "node seo/check.js && vite build",
     "preview": "vite preview --host 127.0.0.1"
   },
-  "dependencies": { "three": "^0.180.0" },
-  "devDependencies": { "vite": "^7.1.0" }
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1",
+    "posthog-js": "^1.447.3",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "vite": "^7.1.0"
+  }
 }

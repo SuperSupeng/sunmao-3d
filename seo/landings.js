@@ -1,6 +1,8 @@
 // Crawlable reading pages for the locked keyword table (过闸定稿, 2026-11-03).
 // The 3D app stays on /#/dayun. These paths are real URLs with text in the first HTML response.
 
+import { analyticsMarkup } from './snippet.js';
+
 export const SITE = 'https://guanmu.darren-su.com';
 
 const CC = 'https://creativecommons.org/licenses/by/4.0/';
@@ -596,6 +598,7 @@ export function renderPage(page) {
     </article>
   </main>
   ${renderFooter(page)}
+  ${analyticsMarkup()}
 </body>
 </html>
 `;
