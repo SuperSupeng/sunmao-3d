@@ -70,7 +70,7 @@ pnpm dev
 | `pnpm build` | 生成生产静态文件到 `dist/` |
 | `pnpm preview` | 在本地预览已构建的 `dist/` |
 
-当前没有后端、数据库、登录系统或外部 API 密钥配置，不需要 `.env`。开发和预览服务均绑定 `127.0.0.1`，默认只供本机访问。
+当前没有后端、数据库或登录系统。页面统计使用 Vercel Web Analytics，不需要密钥。PostHog 是可选的：没有 `VITE_PUBLIC_POSTHOG_KEY` 时应用照常构建和运行。本地要打点时，复制 [`.env.example`](./.env.example) 为 `.env.local` 再填项目密钥。开发和预览服务均绑定 `127.0.0.1`，默认只供本机访问。
 
 ### 页面入口
 

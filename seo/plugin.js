@@ -1,8 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadEnv } from 'vite';
 import { pages, pageFile, renderPage, renderRobots, renderSitemap } from './landings.js';
 import { assertSeo } from './check.js';
+
+function applyAnalyticsEnv(mode) {
+  const env = loadEnv(mode, process.cwd(), 'VITE_PUBLIC_POSTHOG_');
+  for (const [key, value] of Object.entries(env)) {
+    if (!process.env[key]) process.env[key] = value;
+  }
+}
 
 const cssPath = fileURLToPath(new URL('./landing.css', import.meta.url));
 
@@ -63,6 +71,9 @@ export function seoLandings() {
   assertSeo();
   return {
     name: 'guanmu-seo-landings',
+    config(_config, { mode }) {
+      applyAnalyticsEnv(mode);
+    },
     configureServer: attach,
     configurePreviewServer: attach,
     generateBundle() {
